@@ -11,7 +11,9 @@ body {
   display: flex;
   flex-direction: column; /* Adiciona esta linha */
   align-items: center; /* Alinha horizontalmente */
+  justify-content: center; /* Centraliza verticalmente o container */
   padding: 20px;
+  position: relative; /* Para o footer se posicionar corretamente */
 }
 
 footer {
@@ -19,7 +21,14 @@ footer {
   text-align: center;
   color: gray;
   width: 100%;
-  margin-top: auto; /* Empurra o footer para baixo */
+  position: absolute; /* Posiciona absoluto em relação ao body */
+  bottom: 0; /* Cola no fundo */
+  left: 0;
+}
+
+/* Adiciona um espaço para o footer não sobrepor conteúdo */
+.login-container {
+  margin-bottom: 60px; /* Altura aproximada do footer */
 }
 
 /* CARD PRINCIPAL */
@@ -33,10 +42,7 @@ footer {
   box-shadow:
     0 0 40px rgba(0,0,0,0.8),
     inset 0 0 1px rgba(255,255,255,0.1);
-  margin-top: auto; /* Centraliza verticalmente */
-  margin-bottom: auto; /* Centraliza verticalmente */
 }
-
 
 /* LADO ESQUERDO */
 .login-left {
@@ -123,6 +129,7 @@ footer {
   font-size: 12px;
   text-transform: uppercase;
 }
+
 
 
 
