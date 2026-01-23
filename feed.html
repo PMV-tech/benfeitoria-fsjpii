@@ -2,23 +2,39 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>Feed | Admin FSJPII</title>
-  <link rel="stylesheet" href="feed.css">
+  <title>Login | FSJPII</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <header>
-    <h2>FSJPII • Admin</h2>
-  </header>
+  <div class="login-container">
+    
+    <div class="login-left">
+      <h1>Faça o seu login<span>.</span></h1>
 
-  <main id="feed"></main>
+      <label>Email</label>
+      <input type="email" placeholder="Digite seu email">
 
-  <!-- BOTÃO + -->
-  <button class="add-post" onclick="abrirGaleria()">+</button>
+      <label>Senha</label>
+      <input type="password" placeholder="Digite sua senha">
 
-  <!-- INPUT INVISÍVEL -->
-  <input type="file" id="fileInput" accept="image/*" hidden>
+      <button onclick="entrar()">Entrar</button>
+    </div>
 
-  <script src="feed.js"></script>
+    <div class="login-right">
+      <img src="https://github.com/PMV-tech/benfeitoria-fsjpii/blob/main/fundo_fsjpii.png" alt="FSJPII">
+      <p>Benfeitoria FSJPII</p>
+    </div>
+
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    function entrar() {
+      window.location.href = "feed.html";
+    }
+  </script>
+
 </body>
 </html>
+
