@@ -111,10 +111,15 @@ body {
   text-transform: uppercase;
 }
 
+/* FOOTER - Versão Fixed */
 footer {
   padding: 20px;
   text-align: center;
   color: gray;
   width: 100%;
-  grid-row: 2; /* Coloca na segunda linha */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
 }
+
