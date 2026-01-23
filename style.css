@@ -16,6 +16,7 @@ body {
 footer {
   padding: 20px;
   text-align: center;
+  display: flex;
   color: gray;
   width: 100%;
 }
@@ -118,6 +119,7 @@ footer {
   font-size: 12px;
   text-transform: uppercase;
 }
+
 
 
 
