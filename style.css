@@ -8,7 +8,6 @@
 body {
   height: 100vh;
   background: radial-gradient(circle at top, #1a1a1a, #000);
-  display: flex;
   align-items: center;
   justify-content: center;
 }
@@ -110,4 +109,12 @@ body {
   letter-spacing: 2px;
   font-size: 12px;
   text-transform: uppercase;
+}
+
+footer {
+  padding: 20px;
+  text-align: center;
+  color: gray;
+  width: 100%;
+  grid-row: 2; /* Coloca na segunda linha */
 }
