@@ -9,16 +9,17 @@ body {
   min-height: 100vh;
   background: radial-gradient(circle at top, #1a1a1a, #000);
   display: flex;
-  place-items: center;
+  flex-direction: column; /* Adiciona esta linha */
+  align-items: center; /* Alinha horizontalmente */
   padding: 20px;
 }
 
 footer {
   padding: 20px;
   text-align: center;
-  display: flex;
   color: gray;
   width: 100%;
+  margin-top: auto; /* Empurra o footer para baixo */
 }
 
 /* CARD PRINCIPAL */
@@ -32,7 +33,10 @@ footer {
   box-shadow:
     0 0 40px rgba(0,0,0,0.8),
     inset 0 0 1px rgba(255,255,255,0.1);
+  margin-top: auto; /* Centraliza verticalmente */
+  margin-bottom: auto; /* Centraliza verticalmente */
 }
+
 
 /* LADO ESQUERDO */
 .login-left {
@@ -119,6 +123,7 @@ footer {
   font-size: 12px;
   text-transform: uppercase;
 }
+
 
 
 
