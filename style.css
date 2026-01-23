@@ -9,26 +9,10 @@ body {
   min-height: 100vh;
   background: radial-gradient(circle at top, #1a1a1a, #000);
   display: flex;
-  flex-direction: column; /* Adiciona esta linha */
-  align-items: center; /* Alinha horizontalmente */
-  justify-content: center; /* Centraliza verticalmente o container */
+  flex-direction: column; /* Organiza em coluna */
+  align-items: center; /* Centraliza horizontalmente */
+  justify-content: center; /* Centraliza verticalmente o conteúdo */
   padding: 20px;
-  position: relative; /* Para o footer se posicionar corretamente */
-}
-
-footer {
-  padding: 20px;
-  text-align: center;
-  color: gray;
-  width: 100%;
-  position: absolute; /* Posiciona absoluto em relação ao body */
-  bottom: 0; /* Cola no fundo */
-  left: 0;
-}
-
-/* Adiciona um espaço para o footer não sobrepor conteúdo */
-.login-container {
-  margin-bottom: 60px; /* Altura aproximada do footer */
 }
 
 /* CARD PRINCIPAL */
@@ -130,10 +114,18 @@ footer {
   text-transform: uppercase;
 }
 
+/* FOOTER CORRIGIDO */
+footer {
+  padding: 20px;
+  text-align: center;
+  color: gray;
+  width: 100%;
+  position: absolute; /* Posiciona absolutamente */
+  bottom: 0; /* Cola no fundo da página */
+  left: 0;
+}
 
-
-
-
-
-
-
+/* Adiciona espaço na parte de baixo do body para o footer não sobrepor */
+body {
+  padding-bottom: 70px; /* Espaço para o footer */
+}
