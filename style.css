@@ -177,3 +177,9 @@ button.loading::after {
   0%,100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
+.PMV {
+  color: #fff;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
