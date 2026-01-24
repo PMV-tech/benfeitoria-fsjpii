@@ -18,7 +18,8 @@ fileInput.addEventListener("change", () => {
   reader.readAsDataURL(file);
 });
 
-// cria post
+// ... seu código acima ...
+
 function criarPost(imagem) {
   const legenda = prompt("Digite a legenda do post:");
 
@@ -32,6 +33,7 @@ function criarPost(imagem) {
       <button class="like-btn">🤍</button>
       <button class="comment-btn">💬</button>
       <span class="likes">0 curtidas</span>
+      <span class="comments-count">0 comentários</span>
     </div>
 
     <p>${legenda || ""}</p>
@@ -60,7 +62,15 @@ function criarPost(imagem) {
     likesSpan.textContent = likes + " curtidas";
   });
 
-  // COMENTAR
+  // COMENTÁRIOS (numerador)
+  let comments = 0;
+  const commentsCountSpan = post.querySelector(".comments-count");
+
+  function atualizarContadorComentarios() {
+    commentsCountSpan.textContent =
+      comments + (comments === 1 ? " comentário" : " comentários");
+  }
+
   const input = post.querySelector(".comments input");
   const ul = post.querySelector(".comments ul");
 
@@ -70,7 +80,16 @@ function criarPost(imagem) {
       li.textContent = input.value;
       ul.appendChild(li);
       input.value = "";
+
+      comments++; // ✅ incrementa
+      atualizarContadorComentarios(); // ✅ atualiza texto
     }
+  });
+
+  // (Opcional) clicar no 💬 foca no input
+  const commentBtn = post.querySelector(".comment-btn");
+  commentBtn.addEventListener("click", () => {
+    input.focus();
   });
 
   feed.prepend(post);
