@@ -182,6 +182,105 @@ button.loading::after {
   font-size: 14px;
   opacity: 0.9;
 }
+
+/* RESET básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+  padding: 16px;
+  background: #0f172a; /* opcional */
+}
+
+/* CONTAINER */
+.login-container{
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  gap: 24px;
+  background: #111827; /* opcional */
+  border-radius: 16px;
+  padding: 24px;
+}
+
+/* LADOS */
+.login-left, .login-right{
+  flex: 1;
+}
+
+.login-left h1{
+  color: #fff;
+  margin-bottom: 16px;
+  font-size: 32px;
+}
+
+.login-left label{
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: #cbd5e1;
+}
+
+.login-left input{
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #fff;
+  outline: none;
+}
+
+.login-left button{
+  margin-top: 16px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* DIREITA */
+.login-right{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.login-right img{
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  display: block;
+}
+
+.login-right p{
+  margin-top: 10px;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* RODAPÉ */
+.PMV{
+  margin-top: 16px;
+  color: #fff; /* branco */
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.9;
+}
+
 /* ✅ RESPONSIVO MOBILE */
 @media (max-width: 768px){
   body{
@@ -204,4 +303,31 @@ button.loading::after {
     max-width: 240px;
   }
 }
+
+
+
+
+/* ✅ RESPONSIVO MOBILE */
+@media (max-width: 768px){
+  body{
+    justify-content: flex-start;
+    padding: 14px;
+  }
+
+  .login-container{
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .login-left h1{
+    font-size: 26px;
+    text-align: center;
+  }
+
+  .login-right img{
+    max-width: 240px;
+  }
+}
+
 
