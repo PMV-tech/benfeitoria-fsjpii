@@ -139,3 +139,98 @@ main {
 .like-btn.liked {
   color: #ff3b5c;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ✅ RESPONSIVO MOBILE */
+@media (max-width: 768px) {
+  header {
+    padding: 12px 10px;
+    font-size: 16px;
+  }
+
+  main {
+    width: 100%;
+    max-width: 100%;
+    margin: 14px auto;
+    padding: 0 12px; /* dá respiro nas laterais */
+  }
+
+  .post {
+    border-radius: 14px;
+    margin-bottom: 16px;
+  }
+
+  .post p {
+    padding: 12px 12px 10px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .post-actions {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+
+  .post-actions button {
+    font-size: 24px; /* um pouco maior pro dedo */
+  }
+
+  .likes {
+    font-size: 12px;
+  }
+
+  .comments {
+    padding: 0 12px 12px;
+  }
+
+  .comments input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .comments li {
+    font-size: 13px;
+  }
+
+  /* Botão + mais confortável no mobile */
+  .add-post {
+    width: 56px;
+    height: 56px;
+    bottom: 18px;
+    right: 18px;
+    font-size: 32px;
+  }
+
+  .add-post::after {
+    inset: -5px;
+    filter: blur(14px);
+  }
+}
+
+/* ✅ EXTRA: celulares pequenos */
+@media (max-width: 360px) {
+  main {
+    padding: 0 10px;
+  }
+
+  .post-actions button {
+    font-size: 22px;
+  }
+
+  .add-post {
+    width: 52px;
+    height: 52px;
+    font-size: 30px;
+  }
+}
