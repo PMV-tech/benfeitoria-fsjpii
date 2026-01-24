@@ -281,28 +281,7 @@ body{
   opacity: 0.9;
 }
 
-/* ✅ RESPONSIVO MOBILE */
-@media (max-width: 768px){
-  body{
-    justify-content: flex-start;
-    padding: 14px;
-  }
-
-  .login-container{
-    flex-direction: column;
-    padding: 16px;
-    gap: 16px;
-  }
-
-  .login-left h1{
-    font-size: 26px;
-    text-align: center;
-  }
-
-  .login-right img{
-    max-width: 240px;
-  }
-}
+s
 
 
 
