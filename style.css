@@ -183,3 +183,89 @@ button.loading::after {
   font-size: 14px;
   opacity: 0.9;
 }
+
+
+
+
+
+
+
+/* ✅ RESPONSIVO MOBILE */
+@media (max-width: 768px) {
+  body {
+    height: auto;
+    min-height: 100vh;
+    padding: 20px 14px;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .login-container {
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    flex-direction: column;
+    border-radius: 16px;
+  }
+
+  .login-left,
+  .login-right {
+    width: 100%;
+  }
+
+  .login-left {
+    padding: 26px 20px;
+  }
+
+  .login-left h1 {
+    font-size: 26px;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  .login-left label {
+    font-size: 12px;
+  }
+
+  .login-left input {
+    padding: 12px;
+  }
+
+  .login-left button {
+    padding: 13px;
+    font-size: 15px;
+  }
+
+  .login-right {
+    padding: 18px 16px 22px;
+    border-left: none;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .login-right img {
+    width: 180px;
+    margin-bottom: 12px;
+  }
+
+  .login-right p {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+  }
+
+  .PMV {
+    margin-top: 14px;
+    text-align: center;
+    font-size: 12px;
+  }
+}
+
+/* ✅ EXTRA: celulares bem pequenos */
+@media (max-width: 360px) {
+  .login-left {
+    padding: 22px 16px;
+  }
+
+  .login-right img {
+    width: 160px;
+  }
+}
