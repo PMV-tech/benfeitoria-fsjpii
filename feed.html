@@ -5,18 +5,25 @@
   <title>Feed | Admin FSJPII</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="feed.css" />
-  <button id="btnLogout" class="btn-logout" type="button">Sair</button>
 </head>
-<body>
 
-  <header>
+<body>
+  <!-- HEADER -->
+  <header class="topbar">
     <h2>FSJPII • Admin</h2>
+
+    <button id="btnLogout" class="btn-logout" type="button" title="Sair">
+      Sair
+    </button>
   </header>
 
+  <!-- FEED -->
   <main id="feed"></main>
 
   <!-- BOTÃO + -->
   <button class="add-post" onclick="abrirGaleria()" aria-label="Novo post">+</button>
+
+  <!-- INPUT INVISÍVEL -->
   <input type="file" id="fileInput" accept="image/*" hidden />
 
   <!-- MODAL -->
@@ -34,8 +41,8 @@
       <textarea id="captionInput" rows="3" placeholder="Escreva a legenda..."></textarea>
 
       <div class="modal-actions">
-        <button class="btn secondary" id="cancelPost">Cancelar</button>
-        <button class="btn primary" id="publishPost">Publicar</button>
+        <button class="btn secondary" id="cancelPost" type="button">Cancelar</button>
+        <button class="btn primary" id="publishPost" type="button">Publicar</button>
       </div>
     </div>
   </div>
@@ -44,7 +51,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
 
+  <!-- App -->
   <script src="feed.js"></script>
 </body>
 </html>
-
