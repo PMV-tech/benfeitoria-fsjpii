@@ -1,6 +1,16 @@
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
 
+// Modal refs
+const postModal = document.getElementById("postModal");
+const previewImg = document.getElementById("previewImg");
+const captionInput = document.getElementById("captionInput");
+const publishPost = document.getElementById("publishPost");
+const cancelPost = document.getElementById("cancelPost");
+const closeModal = document.getElementById("closeModal");
+
+let pendingImageDataUrl = null;
+
 // abre galeria
 function abrirGaleria() {
   fileInput.click();
@@ -13,25 +23,59 @@ fileInput.addEventListener("change", () => {
 
   const reader = new FileReader();
   reader.onload = () => {
-    criarPost(reader.result);
+    pendingImageDataUrl = reader.result;
+    abrirModalComImagem(pendingImageDataUrl);
   };
   reader.readAsDataURL(file);
+
+  // permite escolher o mesmo arquivo de novo depois
+  fileInput.value = "";
 });
 
-// ... seu código acima ...
+function abrirModalComImagem(dataUrl) {
+  previewImg.src = dataUrl;
+  captionInput.value = "";
+  postModal.classList.add("show");
+  postModal.setAttribute("aria-hidden", "false");
+  setTimeout(() => captionInput.focus(), 50);
+}
 
-function criarPost(imagem) {
-  const legenda = prompt("Digite a legenda do post:");
+function fecharModal() {
+  postModal.classList.remove("show");
+  postModal.setAttribute("aria-hidden", "true");
+  pendingImageDataUrl = null;
+}
 
+// fechar modal: botões e clique fora
+closeModal.addEventListener("click", fecharModal);
+cancelPost.addEventListener("click", fecharModal);
+
+postModal.addEventListener("click", (e) => {
+  if (e.target === postModal) fecharModal();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && postModal.classList.contains("show")) fecharModal();
+});
+
+// publicar
+publishPost.addEventListener("click", () => {
+  if (!pendingImageDataUrl) return;
+  const legenda = captionInput.value.trim();
+  criarPost(pendingImageDataUrl, legenda);
+  fecharModal();
+});
+
+function criarPost(imagem, legenda) {
   const post = document.createElement("div");
   post.classList.add("post");
 
   post.innerHTML = `
-    <img src="${imagem}">
+    <img src="${imagem}" alt="Post">
 
     <div class="post-actions">
-      <button class="like-btn">🤍</button>
-      <button class="comment-btn">💬</button>
+      <button class="like-btn" aria-label="Curtir">🤍</button>
+      <button class="comment-btn" aria-label="Comentar">💬</button>
       <span class="likes">0 curtidas</span>
       <span class="comments-count">0 comentários</span>
     </div>
@@ -81,16 +125,14 @@ function criarPost(imagem) {
       ul.appendChild(li);
       input.value = "";
 
-      comments++; // ✅ incrementa
-      atualizarContadorComentarios(); // ✅ atualiza texto
+      comments++;
+      atualizarContadorComentarios();
     }
   });
 
-  // (Opcional) clicar no 💬 foca no input
+  // clicar no 💬 foca no input
   const commentBtn = post.querySelector(".comment-btn");
-  commentBtn.addEventListener("click", () => {
-    input.focus();
-  });
+  commentBtn.addEventListener("click", () => input.focus());
 
   feed.prepend(post);
 }
