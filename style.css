@@ -69,8 +69,9 @@ body {
   box-shadow: 0 0 0 2px rgba(138,43,226,0.4);
 }
 
-/* BOTÃO */
-.login-left button {
+
+/* BOTÃO ENTRAR */
+.btn-entrar {
   margin-top: 10px;
   padding: 14px;
   border: none;
@@ -83,10 +84,29 @@ body {
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.login-left button:hover {
+.btn-entrar:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px rgba(199,125,255,0.4);
 }
+
+/* BOTÃO/ LINK CADASTRO */
+.btn-cadastro {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+}
+
+.btn-cadastro:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+
+
 
 /* LADO DIREITO */
 .login-right {
@@ -268,4 +288,34 @@ button.loading::after {
   .login-right img {
     width: 160px;
   }
+}
+
+
+
+
+
+
+
+
+.login-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.btn-entrar {
+  margin-top: 20px;
+}
+
+.btn-cadastro {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-cadastro:hover {
+  color: #fff;
+  text-decoration: underline;
 }
