@@ -1,5 +1,5 @@
 // feed.js
-const supa = window.supa;
+const supa = window.supabaseClient; // ✅ padronizado
 
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
@@ -18,7 +18,14 @@ let currentProfile = null;
 
 // ====================== INIT ======================
 async function init() {
-  const { data: { session } } = await supa.auth.getSession();
+  if (!supa) {
+    alert("Supabase não carregou. Verifique o supabaseClient.js");
+    return;
+  }
+
+  const { data: { session }, error: sessErr } = await supa.auth.getSession();
+  if (sessErr) console.error(sessErr);
+
   if (!session) {
     window.location.href = "index.html";
     return;
@@ -40,6 +47,7 @@ async function init() {
 
   currentProfile = profile;
 
+  // Se NÃO for admin, esconde botão +
   if (currentProfile.role !== "admin") {
     const btn = document.querySelector(".add-post");
     if (btn) btn.style.display = "none";
@@ -295,6 +303,7 @@ if (publishPost) {
     await carregarFeed();
   });
 }
+
 // ====================== LOGOUT ======================
 const btnLogout = document.getElementById("btnLogout");
 
