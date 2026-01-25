@@ -1,5 +1,10 @@
 // feed.js
-const supa = window.supa; // ✅ agora bate com supabaseClient.js
+const supa = window.supa;
+
+if (!supa) {
+  alert("Supabase não carregou. Verifique o supabaseClient.js e o CDN.");
+  throw new Error("window.supa undefined");
+}
 
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
@@ -12,19 +17,29 @@ const publishPost = document.getElementById("publishPost");
 const cancelPost = document.getElementById("cancelPost");
 const closeModal = document.getElementById("closeModal");
 
+const btnLogout = document.getElementById("btnLogout");
+
 let pendingFile = null;
 let currentUser = null;
 let currentProfile = null;
 
+// ====================== LOGOUT ======================
+if (btnLogout) {
+  btnLogout.addEventListener("click", async () => {
+    try {
+      const { error } = await supa.auth.signOut();
+      if (error) throw error;
+      window.location.href = "index.html";
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || "Erro ao sair.");
+    }
+  });
+}
+
 // ====================== INIT ======================
 async function init() {
-  if (!supa) {
-    alert("Supabase não carregou. Verifique o supabaseClient.js");
-    return;
-  }
-
-  const { data: { session }, error: sessErr } = await supa.auth.getSession();
-  if (sessErr) console.error(sessErr);
+  const { data: { session } } = await supa.auth.getSession();
 
   if (!session) {
     window.location.href = "index.html";
@@ -47,6 +62,7 @@ async function init() {
 
   currentProfile = profile;
 
+  // se NÃO for admin, esconde botão +
   if (currentProfile.role !== "admin") {
     const btn = document.querySelector(".add-post");
     if (btn) btn.style.display = "none";
@@ -79,6 +95,7 @@ async function carregarFeed() {
   }
 }
 
+// URL pública do Storage (bucket "posts" público)
 function getPublicImageUrl(path) {
   const { data } = supa.storage.from("posts").getPublicUrl(path);
   return data.publicUrl;
@@ -146,7 +163,7 @@ async function renderPost(post) {
       liked = false;
       likeBtn.classList.remove("liked");
       likeBtn.textContent = "🤍";
-      post.likes_count = Math.max(0, (post.likes_count ?? 0) - 1);
+      post.likes_count = Math.max(0, post.likes_count - 1);
     } else {
       const { error } = await supa
         .from("likes")
@@ -161,7 +178,7 @@ async function renderPost(post) {
       liked = true;
       likeBtn.classList.add("liked");
       likeBtn.textContent = "❤️";
-      post.likes_count = (post.likes_count ?? 0) + 1;
+      post.likes_count += 1;
     }
 
     likesSpan.textContent = post.likes_count + " curtidas";
@@ -192,7 +209,7 @@ async function renderPost(post) {
       }
 
       input.value = "";
-      post.comments_count = (post.comments_count ?? 0) + 1;
+      post.comments_count += 1;
 
       commentsCountSpan.textContent =
         post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
@@ -274,6 +291,7 @@ if (publishPost) {
     const fileName = `${crypto.randomUUID()}.${ext}`;
     const filePath = `${currentUser.id}/${fileName}`;
 
+    // upload
     const { error: upErr } = await supa.storage
       .from("posts")
       .upload(filePath, pendingFile, { upsert: false });
@@ -284,6 +302,7 @@ if (publishPost) {
       return;
     }
 
+    // insert
     const { error: insErr } = await supa
       .from("posts")
       .insert({
@@ -300,21 +319,5 @@ if (publishPost) {
 
     fecharModal();
     await carregarFeed();
-  });
-}
-
-// ====================== LOGOUT ======================
-const btnLogout = document.getElementById("btnLogout");
-
-if (btnLogout) {
-  btnLogout.addEventListener("click", async () => {
-    try {
-      const { error } = await supa.auth.signOut();
-      if (error) throw error;
-      window.location.href = "index.html";
-    } catch (e) {
-      console.error(e);
-      alert(e?.message || "Erro ao sair.");
-    }
   });
 }
