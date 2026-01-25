@@ -1,8 +1,9 @@
-const supa = window.supabaseClient;
+// cad.js
+const supa = window.supa;
 
-const emailEl = document.getElementById("email");
-const passEl = document.getElementById("password");
-const nameEl = document.getElementById("fullName");
+const emailEl = document.getElementById("cadEmail");
+const passEl = document.getElementById("cadPass");
+const nameEl = document.getElementById("cadName");
 const btn = document.getElementById("btnCadastrar");
 
 btn.addEventListener("click", cadastrar);
@@ -10,9 +11,9 @@ btn.addEventListener("click", cadastrar);
 async function cadastrar() {
   const email = emailEl.value.trim();
   const password = passEl.value;
-  const fullName = nameEl.value.trim();
+  const full_name = nameEl.value.trim();
 
-  if (!email || !password || !fullName) {
+  if (!email || !password || !full_name) {
     alert("Preencha email, senha e nome.");
     return;
   }
@@ -21,22 +22,36 @@ async function cadastrar() {
   btn.classList.add("loading");
 
   try {
-    const basePath = window.location.pathname.replace(/\/[^/]*$/, "");
-    const redirectTo = `${window.location.origin}${basePath}/index.html`;
-
     const { data, error } = await supa.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectTo
+        data: { full_name } // opcional: fica no user_metadata
       }
     });
 
     if (error) throw error;
 
-    // Com confirm-email ligado: normalmente user não entra automaticamente.
-    alert("Cadastro criado! Confirme seu email para fazer login.");
-    window.location.href = "index.html";
+    // Se o Supabase exigir confirmação por email, session pode vir null
+    if (!data.session) {
+      alert("Cadastro criado! Agora confirme seu email e depois faça login.");
+      window.location.href = "index.html";
+      return;
+    }
+
+    // Se já logou, atualiza o profile (caso o trigger já tenha criado)
+    const userId = data.user?.id || data.session.user.id;
+
+    const { error: upErr } = await supa
+      .from("profiles")
+      .update({ full_name })
+      .eq("id", userId);
+
+    // Se der erro aqui, normalmente é RLS/policy. Mas não impede o cadastro.
+    if (upErr) console.warn("Não consegui atualizar profiles:", upErr);
+
+    alert("Cadastrado com sucesso!");
+    window.location.href = "feed.html";
   } catch (e) {
     console.error(e);
     alert(e?.message || "Erro ao cadastrar.");
