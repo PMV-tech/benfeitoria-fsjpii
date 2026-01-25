@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <title>Login | FSJPII</title>
   <link rel="stylesheet" href="style.css">
- 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 </head>
 <body>
 
@@ -21,7 +19,12 @@
       <label>Senha</label>
       <input type="password" placeholder="Digite sua senha">
 
-      <button onclick="entrar()">Entrar</button>
+     <button class="btn-entrar" onclick="entrar()">Entrar</button>
+
+      <!-- ✅ BOTÃO EMBAIXO DO ENTRAR -->
+      <button class="btn-cadastro" onclick="window.location.href='cad.html'">
+  Não tem cadastro? Cadastre-se
+</button>
     </div>
 
     <div class="login-right">
@@ -29,13 +32,11 @@
       <p>Benfeitoria FSJPII</p>
     </div>
   </div>
-  <Br><p></p>
 
   <div class="PMV">
     © PMV Tech • Tecnologia e Inovação
-</div>
+  </div>
 
-  <!-- SCRIPT -->
   <script>
     function entrar() {
       window.location.href = "feed.html";
@@ -44,6 +45,3 @@
 
 </body>
 </html>
-
-
-
