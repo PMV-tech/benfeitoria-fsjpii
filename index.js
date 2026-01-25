@@ -1,13 +1,14 @@
-const supa = window.supabaseClient;
+// index.js
+const supa = window.supa;
 
 const emailEl = document.getElementById("email");
 const passEl = document.getElementById("password");
 const btn = document.getElementById("btnEntrar");
 
-// Se já estiver logado, vai direto pro feed
+// se já estiver logado, vai direto pro feed
 (async function autoRedirectIfLogged() {
-  const { data: { user } } = await supa.auth.getUser();
-  if (user) window.location.href = "feed.html";
+  const { data: { session } } = await supa.auth.getSession();
+  if (session) window.location.href = "feed.html";
 })();
 
 btn.addEventListener("click", entrar);
@@ -25,11 +26,9 @@ async function entrar() {
   btn.classList.add("loading");
 
   try {
-    const { data, error } = await supa.auth.signInWithPassword({ email, password });
+    const { error } = await supa.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // Se confirm-email está habilitado e o usuário não confirmou, pode dar erro tipo "Email not confirmed"
-    // Se entrou, redireciona:
     window.location.href = "feed.html";
   } catch (e) {
     console.error(e);
