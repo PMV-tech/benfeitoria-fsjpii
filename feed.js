@@ -1,48 +1,21 @@
 // feed.js
-const supa = window.supa; // vem do supabaseClient.js
+const supa = window.supa || window.supabaseClient;
 
-// ========= helpers =========
-function fmtWhen(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
+if (!supa) {
+  alert("Supabase não carregou. Verifique o supabaseClient.js");
+  throw new Error("Supabase client missing");
 }
 
-function errToText(e) {
-  if (!e) return "Erro desconhecido";
-  if (typeof e === "string") return e;
-  const parts = [];
-  if (e.message) parts.push(e.message);
-  if (e.error) parts.push(e.error);
-  if (e.details) parts.push(e.details);
-  if (e.hint) parts.push(e.hint);
-  if (e.status) parts.push(`status=${e.status}`);
-  if (e.statusCode) parts.push(`statusCode=${e.statusCode}`);
-  return parts.filter(Boolean).join(" | ") || JSON.stringify(e);
-}
-
-function isAdmin(profile) {
-  return profile?.role === "admin";
-}
-
-function canDeleteComment(commentUserId) {
-  return isAdmin(currentProfile) || (currentUser?.id && currentUser.id === commentUserId);
-}
-
-// ========= DOM =========
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
 
-// modal
+// Topbar
+const topbarTitle = document.querySelector(".topbar h2");
+
+// Logout
+const btnLogout = document.getElementById("btnLogout");
+
+// Modal
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
 const captionInput = document.getElementById("captionInput");
@@ -50,94 +23,132 @@ const publishPost = document.getElementById("publishPost");
 const cancelPost = document.getElementById("cancelPost");
 const closeModal = document.getElementById("closeModal");
 
-// logout
-const btnLogout = document.getElementById("btnLogout");
+// Botão +
+const addPostBtn = document.querySelector(".add-post");
 
 let pendingFile = null;
 let currentUser = null;
 let currentProfile = null;
 
-if (!supa?.auth) {
-  alert("Supabase não carregou. Verifique supabaseClient.js e o <script> do supabase-js.");
-  throw new Error("Supabase client missing");
+// ----------------- Helpers UI -----------------
+function setTopbarTitle() {
+  const isAdmin = currentProfile?.role === "admin";
+  if (topbarTitle) topbarTitle.textContent = isAdmin ? "FSJPII • Admin" : "FSJPII";
+  document.title = isAdmin ? "Feed | Admin FSJPII" : "Feed | FSJPII";
 }
 
-// ========= INIT =========
-async function init() {
-  const { data: sessData, error: sessErr } = await supa.auth.getSession();
-  if (sessErr) {
-    console.error(sessErr);
-    alert("Erro ao checar sessão.");
-    return;
+function setModalOpen(open) {
+  if (!postModal) return;
+  if (open) {
+    postModal.classList.add("show");
+    postModal.setAttribute("aria-hidden", "false");
+  } else {
+    postModal.classList.remove("show");
+    postModal.setAttribute("aria-hidden", "true");
+  }
+}
+
+function makeIconButton({ title, variant = "default" } = {}) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.title = title || "";
+  btn.setAttribute("aria-label", title || "Ação");
+
+  // estilo "bonito" direto no JS (não depende do CSS)
+  btn.style.width = "34px";
+  btn.style.height = "34px";
+  btn.style.display = "inline-flex";
+  btn.style.alignItems = "center";
+  btn.style.justifyContent = "center";
+  btn.style.borderRadius = "10px";
+  btn.style.border = "1px solid rgba(255,255,255,0.10)";
+  btn.style.background = "rgba(255,255,255,0.06)";
+  btn.style.cursor = "pointer";
+  btn.style.padding = "0";
+  btn.style.transition = "transform .15s ease, background .15s ease, border-color .15s ease";
+  btn.style.userSelect = "none";
+
+  const svg = document.createElement("span");
+  svg.innerHTML = `
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+      xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M9 3h6l1 2h5v2H3V5h5l1-2Z" fill="rgba(255,255,255,0.85)"/>
+      <path d="M6 9h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Z"
+        fill="rgba(255,255,255,0.70)"/>
+      <path d="M10 12v7M14 12v7" stroke="rgba(0,0,0,0.55)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `;
+  btn.appendChild(svg);
+
+  if (variant === "danger") {
+    btn.style.borderColor = "rgba(255, 80, 120, 0.25)";
   }
 
-  if (!sessData.session) {
+  btn.addEventListener("mouseenter", () => {
+    btn.style.background = "rgba(255,255,255,0.10)";
+    btn.style.transform = "translateY(-1px)";
+    btn.style.borderColor = variant === "danger"
+      ? "rgba(255, 80, 120, 0.45)"
+      : "rgba(255,255,255,0.18)";
+  });
+  btn.addEventListener("mouseleave", () => {
+    btn.style.background = "rgba(255,255,255,0.06)";
+    btn.style.transform = "translateY(0)";
+    btn.style.borderColor = variant === "danger"
+      ? "rgba(255, 80, 120, 0.25)"
+      : "rgba(255,255,255,0.10)";
+  });
+
+  return btn;
+}
+
+// Storage (bucket public)
+function getPublicImageUrl(path) {
+  const { data } = supa.storage.from("posts").getPublicUrl(path);
+  return data?.publicUrl || "";
+}
+
+// ----------------- Auth / Perfil -----------------
+async function init() {
+  // sessão (mais confiável pra GH Pages)
+  const { data: { session } } = await supa.auth.getSession();
+
+  if (!session) {
     window.location.href = "index.html";
     return;
   }
 
-  currentUser = sessData.session.user;
+  currentUser = session.user;
 
-  const { data: profile, error: profErr } = await supa
+  // profile
+  const { data: profile, error } = await supa
     .from("profiles")
     .select("id, role, full_name")
     .eq("id", currentUser.id)
     .single();
 
-  if (profErr) {
-    console.error(profErr);
+  if (error) {
+    console.error(error);
     alert("Erro ao carregar perfil.");
     return;
   }
 
   currentProfile = profile;
+  setTopbarTitle();
 
-  const plusBtn = document.querySelector(".add-post");
-  if (plusBtn && !isAdmin(currentProfile)) plusBtn.style.display = "none";
+  // Somente admin pode postar: esconde o +
+  if (currentProfile.role !== "admin") {
+    if (addPostBtn) addPostBtn.style.display = "none";
+  } else {
+    if (addPostBtn) addPostBtn.style.display = "flex";
+  }
 
   await carregarFeed();
 }
 
 init();
 
-// ========= LOGOUT =========
-if (btnLogout) {
-  btnLogout.addEventListener("click", async () => {
-    try {
-      const { error } = await supa.auth.signOut();
-      if (error) throw error;
-      window.location.href = "index.html";
-    } catch (e) {
-      console.error(e);
-      alert("Erro ao sair: " + errToText(e));
-    }
-  });
-}
-
-// ========= MODAL (corrige warning aria-hidden) =========
-function abrirModal() {
-  if (!postModal) return;
-  postModal.classList.add("show");
-  postModal.setAttribute("aria-hidden", "false");
-}
-
-function fecharModal() {
-  if (!postModal) return;
-  postModal.classList.remove("show");
-  postModal.setAttribute("aria-hidden", "true");
-  pendingFile = null;
-}
-
-if (closeModal) closeModal.addEventListener("click", fecharModal);
-if (cancelPost) cancelPost.addEventListener("click", fecharModal);
-
-if (postModal) {
-  postModal.addEventListener("click", (e) => {
-    if (e.target === postModal) fecharModal();
-  });
-}
-
-// ========= FEED =========
+// ----------------- Feed -----------------
 async function carregarFeed() {
   feed.innerHTML = "";
 
@@ -149,7 +160,7 @@ async function carregarFeed() {
 
   if (error) {
     console.error(error);
-    alert("Erro ao carregar feed: " + errToText(error));
+    alert("Erro ao carregar feed.");
     return;
   }
 
@@ -159,86 +170,168 @@ async function carregarFeed() {
   }
 }
 
-function getPublicImageUrl(path) {
-  const { data } = supa.storage.from("posts").getPublicUrl(path);
-  return data?.publicUrl || "";
+function fmtDateBR(isoString) {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yy}, ${hh}:${mi}`;
 }
 
 async function renderPost(post) {
   post.likes_count = post.likes_count ?? 0;
   post.comments_count = post.comments_count ?? 0;
 
+  const isAdmin = currentProfile?.role === "admin";
+
   const postEl = document.createElement("div");
   postEl.className = "post";
 
   const imgUrl = getPublicImageUrl(post.image_url);
-  const authorName = post.full_name || "Usuário";
-  const when = fmtWhen(post.created_at);
 
-  const deletePostBtnHtml = isAdmin(currentProfile)
-    ? `<button class="delete-post-btn" title="Apagar post" aria-label="Apagar post">🗑️</button>`
-    : "";
+  // Cabeçalho do post (autor + data + delete do post p/ admin)
+  const header = document.createElement("div");
+  header.style.display = "flex";
+  header.style.alignItems = "center";
+  header.style.justifyContent = "space-between";
+  header.style.gap = "10px";
+  header.style.padding = "12px 12px 0";
 
-  postEl.innerHTML = `
-    <div class="post-top">
-      <div class="post-meta">
-        <div class="post-author">${authorName}</div>
-        <div class="post-when">${when}</div>
-      </div>
-      <div class="post-top-actions">${deletePostBtnHtml}</div>
-    </div>
+  const left = document.createElement("div");
+  left.style.display = "flex";
+  left.style.flexDirection = "column";
+  left.style.gap = "2px";
 
-    <img src="${imgUrl}" alt="Post">
+  const author = document.createElement("div");
+  author.style.fontWeight = "800";
+  author.style.fontSize = "14px";
+  author.textContent = post.author_name || "Usuário";
 
-    <div class="post-actions">
-      <button class="like-btn" aria-label="Curtir">🤍</button>
-      <button class="comment-btn" aria-label="Comentar">💬</button>
+  const date = document.createElement("div");
+  date.style.fontSize = "12px";
+  date.style.color = "rgba(255,255,255,0.55)";
+  date.textContent = fmtDateBR(post.created_at);
 
-      <span class="likes">${post.likes_count} curtidas</span>
-      <span class="comments-count">${post.comments_count} comentários</span>
-    </div>
+  left.appendChild(author);
+  left.appendChild(date);
 
-    <p class="post-caption">${post.caption || ""}</p>
+  header.appendChild(left);
 
-    <div class="comments">
-      <div class="comment-compose">
-        <input class="comment-input" type="text" placeholder="Adicionar um comentário...">
-        <button class="comment-send" type="button" aria-label="Enviar comentário">➤</button>
-      </div>
-      <ul class="comments-list"></ul>
-    </div>
-  `;
-
-  // ====== DELETE POST (admin) ======
-  const delPostBtn = postEl.querySelector(".delete-post-btn");
-  if (delPostBtn) {
+  // Botão excluir post (apenas admin)
+  if (isAdmin) {
+    const delPostBtn = makeIconButton({ title: "Excluir post", variant: "danger" });
     delPostBtn.addEventListener("click", async () => {
-      if (!isAdmin(currentProfile)) return;
-      const ok = confirm("Apagar este post?");
+      const ok = confirm("Excluir este post? Isso remove o post e a imagem.");
       if (!ok) return;
 
       delPostBtn.disabled = true;
+      delPostBtn.style.opacity = "0.6";
+      delPostBtn.style.pointerEvents = "none";
 
       try {
-        // apaga do DB
-        const { error: delDbErr } = await supa.from("posts").delete().eq("id", post.id);
-        if (delDbErr) throw delDbErr;
+        // 1) tenta remover arquivo do Storage (se falhar, ainda pode apagar o post)
+        if (post.image_url) {
+          const { error: stErr } = await supa.storage.from("posts").remove([post.image_url]);
+          if (stErr) console.warn("Falha ao remover imagem do storage:", stErr);
+        }
 
-        // tenta apagar do storage (depende da policy)
-        const { error: delStErr } = await supa.storage.from("posts").remove([post.image_url]);
-        if (delStErr) console.warn("DB ok, storage não apagou:", delStErr);
+        // 2) remove do banco
+        const { error: dbErr } = await supa.from("posts").delete().eq("id", post.id);
+        if (dbErr) throw dbErr;
 
+        // remove do DOM
         postEl.remove();
       } catch (e) {
         console.error(e);
-        alert("Erro ao apagar post: " + errToText(e));
+        alert(e?.message || "Erro ao excluir post.");
       } finally {
         delPostBtn.disabled = false;
+        delPostBtn.style.opacity = "1";
+        delPostBtn.style.pointerEvents = "auto";
       }
     });
+
+    header.appendChild(delPostBtn);
+  } else {
+    // mantém alinhamento sem botão
+    const spacer = document.createElement("div");
+    spacer.style.width = "34px";
+    spacer.style.height = "34px";
+    header.appendChild(spacer);
   }
 
-  // ===== LIKE =====
+  postEl.appendChild(header);
+
+  // Imagem
+  const img = document.createElement("img");
+  img.src = imgUrl;
+  img.alt = "Post";
+  postEl.appendChild(img);
+
+  // Actions
+  const actions = document.createElement("div");
+  actions.className = "post-actions";
+  actions.innerHTML = `
+    <button class="like-btn" aria-label="Curtir">🤍</button>
+    <button class="comment-btn" aria-label="Comentar">💬</button>
+    <span class="likes">${post.likes_count} curtidas</span>
+    <span class="comments-count">${post.comments_count} comentários</span>
+  `;
+  postEl.appendChild(actions);
+
+  // Caption
+  const caption = document.createElement("p");
+  caption.textContent = post.caption || "";
+  postEl.appendChild(caption);
+
+  // Comments area
+  const commentsWrap = document.createElement("div");
+  commentsWrap.className = "comments";
+
+  // input row + botão enviar (seu CSS já pode ajustar, mas aqui funciona mesmo sem)
+  const inputRow = document.createElement("div");
+  inputRow.style.display = "flex";
+  inputRow.style.gap = "10px";
+  inputRow.style.alignItems = "center";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Adicionar um comentário...";
+  inputRow.appendChild(input);
+
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "button";
+  sendBtn.setAttribute("aria-label", "Enviar comentário");
+  sendBtn.textContent = "➤";
+  sendBtn.style.width = "40px";
+  sendBtn.style.height = "36px";
+  sendBtn.style.borderRadius = "10px";
+  sendBtn.style.border = "1px solid rgba(255,255,255,0.10)";
+  sendBtn.style.background = "rgba(255,255,255,0.06)";
+  sendBtn.style.color = "#fff";
+  sendBtn.style.cursor = "pointer";
+  sendBtn.style.transition = "background .15s ease, transform .15s ease";
+  sendBtn.addEventListener("mouseenter", () => {
+    sendBtn.style.background = "rgba(255,255,255,0.10)";
+    sendBtn.style.transform = "translateY(-1px)";
+  });
+  sendBtn.addEventListener("mouseleave", () => {
+    sendBtn.style.background = "rgba(255,255,255,0.06)";
+    sendBtn.style.transform = "translateY(0)";
+  });
+
+  inputRow.appendChild(sendBtn);
+
+  const ul = document.createElement("ul");
+
+  commentsWrap.appendChild(inputRow);
+  commentsWrap.appendChild(ul);
+  postEl.appendChild(commentsWrap);
+
+  // LIKE
   const likeBtn = postEl.querySelector(".like-btn");
   const likesSpan = postEl.querySelector(".likes");
 
@@ -267,10 +360,9 @@ async function renderPost(post) {
 
       if (error) {
         console.error(error);
-        alert("Erro ao remover curtida: " + errToText(error));
+        alert("Erro ao remover curtida.");
         return;
       }
-
       liked = false;
       likeBtn.classList.remove("liked");
       likeBtn.textContent = "🤍";
@@ -282,23 +374,18 @@ async function renderPost(post) {
 
       if (error) {
         console.error(error);
-        alert("Erro ao curtir: " + errToText(error));
+        alert("Erro ao curtir.");
         return;
       }
-
       liked = true;
       likeBtn.classList.add("liked");
       likeBtn.textContent = "❤️";
       post.likes_count += 1;
     }
-
     likesSpan.textContent = post.likes_count + " curtidas";
   });
 
-  // ===== COMMENTS =====
-  const input = postEl.querySelector(".comment-input");
-  const sendBtn = postEl.querySelector(".comment-send");
-  const ul = postEl.querySelector(".comments-list");
+  // COMMENTS (carregar + deletar)
   const commentsCountSpan = postEl.querySelector(".comments-count");
   const commentBtn = postEl.querySelector(".comment-btn");
 
@@ -306,25 +393,13 @@ async function renderPost(post) {
 
   await carregarComentarios(post.id, ul);
 
-  async function refreshCount() {
-    // pega contagem real (mais robusto)
-    const { count, error } = await supa
-      .from("comments")
-      .select("*", { count: "exact", head: true })
-      .eq("post_id", post.id);
-
-    if (!error && typeof count === "number") {
-      post.comments_count = count;
-      commentsCountSpan.textContent =
-        post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
-    }
-  }
-
   async function enviarComentario() {
     const content = input.value.trim();
     if (!content) return;
 
     sendBtn.disabled = true;
+    sendBtn.style.opacity = "0.6";
+
     try {
       const { error } = await supa
         .from("comments")
@@ -333,190 +408,195 @@ async function renderPost(post) {
       if (error) throw error;
 
       input.value = "";
+      post.comments_count += 1;
+
+      commentsCountSpan.textContent =
+        post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
+
       await carregarComentarios(post.id, ul);
-      await refreshCount();
     } catch (e) {
       console.error(e);
-      alert("Erro ao comentar: " + errToText(e));
+      alert(e?.message || "Erro ao comentar.");
     } finally {
       sendBtn.disabled = false;
+      sendBtn.style.opacity = "1";
     }
   }
 
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") enviarComentario();
+  input.addEventListener("keypress", async (e) => {
+    if (e.key === "Enter") await enviarComentario();
   });
   sendBtn.addEventListener("click", enviarComentario);
 
   return postEl;
 }
 
-// Carrega comentários + mostra autor + hora + botão apagar (admin ou dono)
 async function carregarComentarios(postId, ul) {
   ul.innerHTML = "";
 
-  // tenta join comments -> profiles
-  let rows = null;
-  let joinOk = true;
-
-  const { data: joined, error: joinErr } = await supa
-    .from("comments")
-    .select("id, content, created_at, user_id, profiles(full_name)")
+  // join via view/consulta simples: traz author_name quando disponível
+  const { data, error } = await supa
+    .from("v_comments")
+    .select("id, content, created_at, user_id, author_name")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
-  if (joinErr) {
-    joinOk = false;
-    console.warn("Join comments->profiles falhou, fallback:", joinErr);
-  } else {
-    rows = joined;
+  if (error) {
+    console.error(error);
+    return;
   }
 
-  if (!joinOk) {
-    const { data: plain, error: plainErr } = await supa
-      .from("comments")
-      .select("id, content, created_at, user_id")
-      .eq("post_id", postId)
-      .order("created_at", { ascending: true });
+  const isAdmin = currentProfile?.role === "admin";
 
-    if (plainErr) {
-      console.error(plainErr);
-      return;
-    }
-
-    const userIds = [...new Set(plain.map((c) => c.user_id))].filter(Boolean);
-    let nameMap = {};
-
-    if (userIds.length) {
-      const { data: profs } = await supa
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", userIds);
-
-      if (profs?.length) {
-        for (const p of profs) nameMap[p.id] = p.full_name || "Usuário";
-      }
-    }
-
-    rows = plain.map((c) => ({
-      ...c,
-      profiles: { full_name: nameMap[c.user_id] || "Usuário" },
-    }));
-  }
-
-  for (const c of rows) {
+  for (const c of data) {
     const li = document.createElement("li");
-    li.className = "comment-item";
+    li.style.display = "flex";
+    li.style.alignItems = "flex-start";
+    li.style.justifyContent = "space-between";
+    li.style.gap = "12px";
 
-    const name = c.profiles?.full_name || "Usuário";
-    const when = fmtWhen(c.created_at);
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.flexDirection = "column";
+    left.style.gap = "2px";
 
-    const delBtnHtml = canDeleteComment(c.user_id)
-      ? `<button class="comment-delete" title="Apagar comentário" aria-label="Apagar comentário">🗑️</button>`
-      : "";
+    const meta = document.createElement("div");
+    meta.style.fontWeight = "800";
+    meta.style.fontSize = "13px";
+    meta.textContent = `${c.author_name || "Usuário"}  ${fmtDateBR(c.created_at)}`;
 
-    li.innerHTML = `
-      <div class="comment-row">
-        <div class="comment-left">
-          <div class="comment-head">
-            <span class="comment-author">${name}</span>
-            <span class="comment-when">${when}</span>
-          </div>
-          <div class="comment-text">${c.content}</div>
-        </div>
-        <div class="comment-actions">
-          ${delBtnHtml}
-        </div>
-      </div>
-    `;
+    const txt = document.createElement("div");
+    txt.style.fontSize = "13px";
+    txt.style.color = "rgba(255,255,255,0.85)";
+    txt.textContent = c.content;
 
-    const delBtn = li.querySelector(".comment-delete");
-    if (delBtn) {
+    left.appendChild(meta);
+    left.appendChild(txt);
+
+    li.appendChild(left);
+
+    const canDelete = isAdmin || c.user_id === currentUser.id;
+    if (canDelete) {
+      const delBtn = makeIconButton({ title: "Excluir comentário", variant: "danger" });
       delBtn.addEventListener("click", async () => {
-        const ok = confirm("Apagar este comentário?");
+        const ok = confirm("Excluir este comentário?");
         if (!ok) return;
 
         delBtn.disabled = true;
+        delBtn.style.opacity = "0.6";
+        delBtn.style.pointerEvents = "none";
+
         try {
           const { error } = await supa.from("comments").delete().eq("id", c.id);
           if (error) throw error;
-
           li.remove();
         } catch (e) {
           console.error(e);
-          alert("Erro ao apagar comentário: " + errToText(e));
+          alert(e?.message || "Erro ao excluir comentário.");
         } finally {
           delBtn.disabled = false;
+          delBtn.style.opacity = "1";
+          delBtn.style.pointerEvents = "auto";
         }
       });
+
+      li.appendChild(delBtn);
+    } else {
+      const spacer = document.createElement("div");
+      spacer.style.width = "34px";
+      spacer.style.height = "34px";
+      li.appendChild(spacer);
     }
 
     ul.appendChild(li);
   }
 }
 
-// ========= POSTAR (ADMIN) =========
+// ----------------- Postar (ADMIN) -----------------
 window.abrirGaleria = function abrirGaleria() {
-  if (!isAdmin(currentProfile)) return;
+  if (!currentProfile || currentProfile.role !== "admin") return;
   fileInput.click();
 };
 
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
+fileInput?.addEventListener("change", () => {
+  const file = fileInput.files?.[0];
   if (!file) return;
 
   pendingFile = file;
 
   const reader = new FileReader();
   reader.onload = () => {
-    previewImg.src = reader.result;
-    captionInput.value = "";
-    abrirModal();
-    setTimeout(() => captionInput.focus(), 50);
+    if (previewImg) previewImg.src = reader.result;
+    if (captionInput) captionInput.value = "";
+    setModalOpen(true);
+    setTimeout(() => captionInput?.focus(), 50);
   };
   reader.readAsDataURL(file);
 
   fileInput.value = "";
 });
 
-if (publishPost) {
-  publishPost.addEventListener("click", async () => {
-    if (!pendingFile) return;
-    if (!isAdmin(currentProfile)) return;
-
-    const caption = captionInput.value.trim();
-
-    publishPost.disabled = true;
-
-    try {
-      const ext = (pendingFile.name.split(".").pop() || "jpg").toLowerCase();
-      const fileName = `${crypto.randomUUID()}.${ext}`;
-      const filePath = `${currentUser.id}/${fileName}`;
-
-      // upload no storage
-      const { error: upErr } = await supa.storage
-        .from("posts")
-        .upload(filePath, pendingFile, {
-          upsert: false,
-          contentType: pendingFile.type || undefined,
-        });
-
-      if (upErr) throw upErr;
-
-      // salva no DB
-      const { error: insErr } = await supa
-        .from("posts")
-        .insert({ user_id: currentUser.id, caption, image_url: filePath });
-
-      if (insErr) throw insErr;
-
-      fecharModal();
-      await carregarFeed();
-    } catch (e) {
-      console.error(e);
-      alert("Erro ao publicar: " + errToText(e));
-    } finally {
-      publishPost.disabled = false;
-    }
-  });
+function fecharModal() {
+  setModalOpen(false);
+  pendingFile = null;
 }
+
+closeModal?.addEventListener("click", fecharModal);
+cancelPost?.addEventListener("click", fecharModal);
+
+postModal?.addEventListener("click", (e) => {
+  if (e.target === postModal) fecharModal();
+});
+
+publishPost?.addEventListener("click", async () => {
+  if (!pendingFile) return;
+  if (!currentProfile || currentProfile.role !== "admin") return;
+
+  const caption = captionInput?.value?.trim() || "";
+
+  publishPost.disabled = true;
+  publishPost.style.opacity = "0.7";
+  publishPost.style.pointerEvents = "none";
+
+  try {
+    const ext = (pendingFile.name.split(".").pop() || "jpg").toLowerCase();
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+    const filePath = `${currentUser.id}/${fileName}`;
+
+    // upload
+    const { error: upErr } = await supa.storage
+      .from("posts")
+      .upload(filePath, pendingFile, { upsert: false });
+
+    if (upErr) throw upErr;
+
+    // insert
+    const { error: insErr } = await supa
+      .from("posts")
+      .insert({ user_id: currentUser.id, caption, image_url: filePath });
+
+    if (insErr) throw insErr;
+
+    fecharModal();
+    await carregarFeed();
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao postar.");
+  } finally {
+    publishPost.disabled = false;
+    publishPost.style.opacity = "1";
+    publishPost.style.pointerEvents = "auto";
+  }
+});
+
+// ----------------- Logout -----------------
+btnLogout?.addEventListener("click", async () => {
+  try {
+    const { error } = await supa.auth.signOut();
+    if (error) throw error;
+    window.location.href = "index.html";
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao sair.");
+  }
+});
