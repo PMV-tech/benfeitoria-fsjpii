@@ -1,9 +1,10 @@
-const supa = window.supabaseClient;
+// feed.js
+const supa = window.supa;
 
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
 
-// Modal (se você já colocou o modal que fizemos)
+// Modal
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
 const captionInput = document.getElementById("captionInput");
@@ -15,21 +16,20 @@ let pendingFile = null;
 let currentUser = null;
 let currentProfile = null;
 
-// ====================== AUTH / PERFIL ======================
+// ====================== INIT ======================
 async function init() {
-  const { data: { user } } = await supa.auth.getUser();
-  if (!user) {
-    // não logou -> volta pro login
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) {
     window.location.href = "index.html";
     return;
   }
-  currentUser = user;
 
-  // pega profile pra saber role
+  currentUser = session.user;
+
   const { data: profile, error } = await supa
     .from("profiles")
     .select("id, role, full_name")
-    .eq("id", user.id)
+    .eq("id", currentUser.id)
     .single();
 
   if (error) {
@@ -37,9 +37,9 @@ async function init() {
     alert("Erro ao carregar perfil.");
     return;
   }
+
   currentProfile = profile;
 
-  // se NÃO for admin, esconde botão +
   if (currentProfile.role !== "admin") {
     const btn = document.querySelector(".add-post");
     if (btn) btn.style.display = "none";
@@ -72,13 +72,15 @@ async function carregarFeed() {
   }
 }
 
-// Monta URL pública do Storage (bucket public)
 function getPublicImageUrl(path) {
   const { data } = supa.storage.from("posts").getPublicUrl(path);
   return data.publicUrl;
 }
 
 async function renderPost(post) {
+  post.likes_count = post.likes_count ?? 0;
+  post.comments_count = post.comments_count ?? 0;
+
   const postEl = document.createElement("div");
   postEl.className = "post";
 
@@ -103,11 +105,10 @@ async function renderPost(post) {
     </div>
   `;
 
-  // ===== LIKE =====
+  // LIKE
   const likeBtn = postEl.querySelector(".like-btn");
   const likesSpan = postEl.querySelector(".likes");
 
-  // checar se eu já curti
   const { data: likedRow } = await supa
     .from("likes")
     .select("post_id")
@@ -122,8 +123,6 @@ async function renderPost(post) {
   }
 
   likeBtn.addEventListener("click", async () => {
-    if (!currentUser) return;
-
     if (liked) {
       const { error } = await supa
         .from("likes")
@@ -136,10 +135,11 @@ async function renderPost(post) {
         alert("Erro ao remover curtida.");
         return;
       }
+
       liked = false;
       likeBtn.classList.remove("liked");
       likeBtn.textContent = "🤍";
-      post.likes_count = Math.max(0, post.likes_count - 1);
+      post.likes_count = Math.max(0, (post.likes_count ?? 0) - 1);
     } else {
       const { error } = await supa
         .from("likes")
@@ -150,15 +150,17 @@ async function renderPost(post) {
         alert("Erro ao curtir.");
         return;
       }
+
       liked = true;
       likeBtn.classList.add("liked");
       likeBtn.textContent = "❤️";
-      post.likes_count += 1;
+      post.likes_count = (post.likes_count ?? 0) + 1;
     }
+
     likesSpan.textContent = post.likes_count + " curtidas";
   });
 
-  // ===== COMMENTS =====
+  // COMMENTS
   const input = postEl.querySelector(".comments input");
   const ul = postEl.querySelector(".comments ul");
   const commentsCountSpan = postEl.querySelector(".comments-count");
@@ -166,7 +168,6 @@ async function renderPost(post) {
 
   commentBtn.addEventListener("click", () => input.focus());
 
-  // carrega comentários do post
   await carregarComentarios(post.id, ul);
 
   input.addEventListener("keypress", async (e) => {
@@ -184,7 +185,8 @@ async function renderPost(post) {
       }
 
       input.value = "";
-      post.comments_count += 1;
+      post.comments_count = (post.comments_count ?? 0) + 1;
+
       commentsCountSpan.textContent =
         post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
 
@@ -198,7 +200,6 @@ async function renderPost(post) {
 async function carregarComentarios(postId, ul) {
   ul.innerHTML = "";
 
-  // comentários com nome do autor (join via profiles)
   const { data, error } = await supa
     .from("comments")
     .select("id, content, created_at, user_id")
@@ -229,7 +230,6 @@ fileInput.addEventListener("change", () => {
 
   pendingFile = file;
 
-  // abre modal e mostra preview
   const reader = new FileReader();
   reader.onload = () => {
     previewImg.src = reader.result;
@@ -263,12 +263,10 @@ if (publishPost) {
 
     const caption = captionInput.value.trim();
 
-    // gera um nome único pro arquivo
     const ext = pendingFile.name.split(".").pop();
     const fileName = `${crypto.randomUUID()}.${ext}`;
     const filePath = `${currentUser.id}/${fileName}`;
 
-    // 1) upload no Storage
     const { error: upErr } = await supa.storage
       .from("posts")
       .upload(filePath, pendingFile, { upsert: false });
@@ -279,7 +277,6 @@ if (publishPost) {
       return;
     }
 
-    // 2) insert no banco (guarda o PATH)
     const { error: insErr } = await supa
       .from("posts")
       .insert({
