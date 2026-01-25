@@ -3,35 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <title>Feed | Admin FSJPII</title>
+
+  <!-- RESPONSIVO -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CSS DO FEED -->
   <link rel="stylesheet" href="feed.css">
 </head>
 <body>
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-
+  <!-- HEADER -->
   <header>
     <h2>FSJPII • Admin</h2>
   </header>
 
-
-  
+  <!-- FEED -->
   <main id="feed"></main>
 
   <!-- BOTÃO + -->
-  <button class="add-post" onclick="abrirGaleria()">+</button>
+  <button class="add-post" onclick="abrirGaleria()" aria-label="Novo post">+</button>
 
   <!-- INPUT INVISÍVEL -->
   <input type="file" id="fileInput" accept="image/*" hidden>
 
+  <!-- ================= MODAL DE NOVO POST ================= -->
+  <div class="modal" id="postModal" aria-hidden="true">
+    <div class="modal-card">
 
-<main id="feed"></main>
+      <!-- FECHAR -->
+      <button class="modal-close" id="closeModal" aria-label="Fechar">×</button>
 
-<button class="add-post" onclick="abrirGaleria()">+</button>
-<input type="file" id="fileInput" accept="image/*" hidden>
+      <h3>Novo post</h3>
 
+      <!-- PREVIEW -->
+      <div class="modal-preview">
+        <img id="previewImg" alt="Prévia da imagem">
+      </div>
 
+      <!-- LEGENDA -->
+      <label for="captionInput">Legenda</label>
+      <textarea
+        id="captionInput"
+        rows="3"
+        placeholder="Escreva a legenda..."
+      ></textarea>
 
+      <!-- AÇÕES -->
+      <div class="modal-actions">
+        <button class="btn secondary" id="cancelPost">Cancelar</button>
+        <button class="btn primary" id="publishPost">Publicar</button>
+      </div>
+
+    </div>
+  </div>
+  <!-- ===================================================== -->
+
+  <!-- JS DO FEED -->
   <script src="feed.js"></script>
+
 </body>
 </html>
