@@ -2,26 +2,34 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Feed | FSJPII</title>
+  <title>Feed | Admin FSJPII</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="feed.css" />
 </head>
 
 <body>
-  <header>
+
+  <!-- HEADER -->
+  <header class="topbar">
     <h2>FSJPII • Admin</h2>
+
+    <!-- botão sai no LUGAR CERTO (no body, dentro do header) -->
     <button id="btnLogout" class="btn-logout" type="button">Sair</button>
   </header>
 
+  <!-- FEED -->
   <main id="feed"></main>
 
   <!-- BOTÃO + -->
   <button class="add-post" onclick="abrirGaleria()" aria-label="Novo post">+</button>
+
+  <!-- INPUT INVISÍVEL -->
   <input type="file" id="fileInput" accept="image/*" hidden />
 
-  <!-- MODAL -->
+  <!-- MODAL DE NOVO POST -->
   <div class="modal" id="postModal" aria-hidden="true">
     <div class="modal-card">
+
       <button class="modal-close" id="closeModal" aria-label="Fechar">×</button>
 
       <h3>Novo post</h3>
@@ -34,9 +42,10 @@
       <textarea id="captionInput" rows="3" placeholder="Escreva a legenda..."></textarea>
 
       <div class="modal-actions">
-        <button class="btn secondary" id="cancelPost">Cancelar</button>
-        <button class="btn primary" id="publishPost">Publicar</button>
+        <button class="btn secondary" id="cancelPost" type="button">Cancelar</button>
+        <button class="btn primary" id="publishPost" type="button">Publicar</button>
       </div>
+
     </div>
   </div>
 
@@ -44,6 +53,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
 
+  <!-- Seu JS do feed -->
   <script src="feed.js"></script>
+
 </body>
 </html>
