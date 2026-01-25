@@ -295,3 +295,18 @@ if (publishPost) {
     await carregarFeed();
   });
 }
+// ====================== LOGOUT ======================
+const btnLogout = document.getElementById("btnLogout");
+
+if (btnLogout) {
+  btnLogout.addEventListener("click", async () => {
+    try {
+      const { error } = await supa.auth.signOut();
+      if (error) throw error;
+      window.location.href = "index.html";
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || "Erro ao sair.");
+    }
+  });
+}
