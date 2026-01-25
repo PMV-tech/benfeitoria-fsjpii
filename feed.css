@@ -2,152 +2,239 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: "Segoe UI", sans-serif;
 }
 
 body {
   background: #0b0b0b;
-  color: white;
+  color: #fff;
+  min-height: 100vh;
 }
 
-/* HEADER */
+/* ===================== TOPBAR ===================== */
 .topbar{
   position: sticky;
   top: 0;
   z-index: 50;
 
-  background: #000;
-  padding: 14px 16px;
-  border-bottom: 1px solid #1f1f1f;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 
+  height: 62px;
   display: flex;
   align-items: center;
-  justify-content: center; /* título central */
+  justify-content: center;
+
+  padding: 0 14px;
 }
 
 .topbar h2{
   font-size: 18px;
-  font-weight: 800;
-  letter-spacing: .5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #fff;
 }
 
-/* Botão sair */
+/* Botão sair fixo na direita do header */
 .btn-logout{
   position: absolute;
-  right: 14px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 
   padding: 10px 14px;
   border-radius: 12px;
-
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.06);
   color: #fff;
 
   cursor: pointer;
-  font-weight: 800;
-  font-size: 13px;
-
-  transition: .2s ease;
+  font-weight: 700;
+  transition: 0.2s ease;
 }
 
 .btn-logout:hover{
   background: rgba(255,255,255,0.10);
-  transform: translateY(-1px);
+  border-color: rgba(255,255,255,0.18);
 }
 
-.btn-logout:active{
-  transform: translateY(0px);
-  opacity: .9;
+/* ===================== LAYOUT ===================== */
+main{
+  max-width: 520px;
+  margin: 18px auto 120px;
+  padding: 0 14px;
 }
 
-/* CONTEÚDO */
-main {
-  max-width: 450px;
-  margin: 20px auto;
-  padding: 0 12px;
-}
+/* ===================== POST CARD ===================== */
+.post{
+  background: linear-gradient(145deg, rgba(18,18,18,0.95), rgba(8,8,8,0.95));
+  border: 1px solid rgba(255,255,255,0.08);
 
-/* POST */
-.post {
-  background: #111;
-  margin-bottom: 20px;
-  border-radius: 12px;
+  margin-bottom: 16px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(0,0,0,0.6);
+
+  box-shadow:
+    0 18px 45px rgba(0,0,0,0.65),
+    inset 0 0 1px rgba(255,255,255,0.12);
 }
 
-.post img {
+.post img{
   width: 100%;
   display: block;
+  max-height: 520px;
+  object-fit: cover;
+  background: #000;
 }
 
-.post p {
-  padding: 12px;
+/* área da legenda */
+.post p{
+  padding: 10px 14px 14px;
   color: #ddd;
+  line-height: 1.35;
+  font-size: 14px;
 }
 
-/* AÇÕES */
-.post-actions {
+/* ===================== AÇÕES (like/coment) ===================== */
+.post-actions{
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
 }
 
-.post-actions button {
+.post-actions button{
   background: none;
   border: none;
   font-size: 22px;
   cursor: pointer;
-  color: white;
+  color: #fff;
+  opacity: 0.95;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
-.like-btn.liked {
+.post-actions button:hover{
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.like-btn.liked{
   color: #ff3b5c;
 }
 
-.likes {
-  margin-left: auto;
-  font-size: 13px;
-  color: #aaa;
-}
-
+/* contadores */
+.likes,
 .comments-count{
-  font-size: 13px;
-  color: #aaa;
+  font-size: 12px;
+  color: rgba(255,255,255,0.65);
 }
 
-/* COMENTÁRIOS */
-.comments {
+.likes{
+  margin-left: auto;
+}
+
+/* ===================== ÁREA DE COMENTÁRIOS ===================== */
+.comments{
   padding: 0 12px 12px;
 }
 
-.comments input {
+.comment-row{
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comments input{
+  flex: 1;
   width: 100%;
-  padding: 10px;
-  background: #1a1a1a;
-  border: none;
-  border-radius: 8px;
-  color: white;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  color: #fff;
   outline: none;
 }
 
-.comments ul {
-  margin-top: 8px;
+.comments input:focus{
+  box-shadow: 0 0 0 2px rgba(138,43,226,0.35);
+  border-color: rgba(255,255,255,0.16);
+}
+
+.comment-send{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.comment-send:hover{
+  background: rgba(255,255,255,0.12);
+}
+
+/* lista de comentários */
+.comments ul{
+  margin-top: 10px;
   list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.comments li {
+.comments li{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 10px 10px;
   font-size: 13px;
-  margin-top: 4px;
-  color: #ddd;
+  color: #e8e8e8;
 }
 
-/* BOTÃO + */
-.add-post {
+.comment-meta{
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+
+.comment-author{
+  color: rgba(255,255,255,0.85);
+  font-weight: 700;
+}
+
+/* ===================== AÇÕES ADMIN (ex: apagar post) ===================== */
+.post-admin{
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.btn-danger{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,59,92,0.35);
+  background: rgba(255,59,92,0.12);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.btn-danger:hover{
+  background: rgba(255,59,92,0.18);
+}
+
+/* ===================== BOTÃO + ===================== */
+.add-post{
   position: fixed;
-  bottom: 25px;
-  right: 25px;
+  bottom: 22px;
+  right: 22px;
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -163,15 +250,15 @@ main {
   align-items: center;
   justify-content: center;
 
-  box-shadow: 0 10px 30px rgba(199,125,255,0.5);
-  transition: transform 0.3s ease;
+  box-shadow: 0 14px 40px rgba(199,125,255,0.35);
+  transition: transform 0.25s ease;
 }
 
-.add-post:hover {
-  transform: scale(1.1);
+.add-post:hover{
+  transform: scale(1.06);
 }
 
-.add-post::after {
+.add-post::after{
   content: "";
   position: absolute;
   inset: -6px;
@@ -182,8 +269,8 @@ main {
   z-index: -1;
 }
 
-/* MODAL */
-.modal {
+/* ===================== MODAL ===================== */
+.modal{
   position: fixed;
   inset: 0;
   display: none;
@@ -195,11 +282,11 @@ main {
   z-index: 999;
 }
 
-.modal.show {
+.modal.show{
   display: flex;
 }
 
-.modal-card {
+.modal-card{
   width: 100%;
   max-width: 440px;
   background: linear-gradient(145deg, #0e0e0e, #050505);
@@ -210,13 +297,13 @@ main {
   position: relative;
 }
 
-.modal-card h3 {
+.modal-card h3{
   font-size: 18px;
   margin-bottom: 12px;
   color: #fff;
 }
 
-.modal-close {
+.modal-close{
   position: absolute;
   top: 10px;
   right: 12px;
@@ -230,7 +317,7 @@ main {
   cursor: pointer;
 }
 
-.modal-preview {
+.modal-preview{
   width: 100%;
   border-radius: 14px;
   overflow: hidden;
@@ -239,21 +326,21 @@ main {
   margin-bottom: 12px;
 }
 
-.modal-preview img {
+.modal-preview img{
   width: 100%;
   display: block;
   max-height: 340px;
   object-fit: cover;
 }
 
-.modal-card label {
+.modal-card label{
   display: block;
   font-size: 12px;
   color: #bbb;
   margin: 8px 0 6px;
 }
 
-.modal-card textarea {
+.modal-card textarea{
   width: 100%;
   resize: none;
   padding: 10px 12px;
@@ -264,17 +351,17 @@ main {
   outline: none;
 }
 
-.modal-card textarea:focus {
+.modal-card textarea:focus{
   box-shadow: 0 0 0 2px rgba(138,43,226,0.35);
 }
 
-.modal-actions {
+.modal-actions{
   display: flex;
   gap: 10px;
   margin-top: 12px;
 }
 
-.btn {
+.btn{
   flex: 1;
   padding: 12px;
   border-radius: 12px;
@@ -283,51 +370,39 @@ main {
   font-weight: 700;
 }
 
-.btn.primary {
+.btn.primary{
   color: white;
   background: linear-gradient(135deg, #6a5cff, #c77dff, #ffb703);
 }
 
-.btn.secondary {
+.btn.secondary{
   color: #fff;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.10);
 }
 
-/* RESPONSIVO */
-@media (max-width: 768px) {
-  .topbar h2 { font-size: 16px; }
-  .btn-logout { padding: 9px 12px; font-size: 12px; }
-  main { margin: 14px auto; }
-  .post { border-radius: 14px; margin-bottom: 16px; }
-  .post p { font-size: 14px; line-height: 1.35; }
-  .post-actions button { font-size: 24px; }
-  .add-post { width: 56px; height: 56px; bottom: 18px; right: 18px; font-size: 32px; }
-  .add-post::after { inset: -5px; filter: blur(14px); }
-}
+/* ===================== RESPONSIVO ===================== */
+@media (max-width: 768px){
+  .topbar{ height: 58px; }
+  .topbar h2{ font-size: 16px; }
 
-@media (max-width: 360px) {
-  .add-post { width: 52px; height: 52px; font-size: 30px; }
-}
+  main{
+    max-width: 100%;
+    margin: 14px auto 110px;
+  }
 
-header{
-  position: relative;
-}
+  .add-post{
+    width: 56px;
+    height: 56px;
+    bottom: 18px;
+    right: 18px;
+    font-size: 32px;
+  }
 
-.btn-logout{
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.06);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 700;
-}
+  .add-post::after{
+    inset: -5px;
+    filter: blur(14px);
+  }
 
-.btn-logout:hover{
-  background: rgba(255,255,255,0.10);
+  .post p{ font-size: 14px; }
 }
-
