@@ -1,10 +1,48 @@
 // feed.js
-const supa = window.supa;
+const supa = window.supa; // vem do supabaseClient.js
 
+// ========= helpers =========
+function fmtWhen(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function errToText(e) {
+  if (!e) return "Erro desconhecido";
+  if (typeof e === "string") return e;
+  const parts = [];
+  if (e.message) parts.push(e.message);
+  if (e.error) parts.push(e.error);
+  if (e.details) parts.push(e.details);
+  if (e.hint) parts.push(e.hint);
+  if (e.status) parts.push(`status=${e.status}`);
+  if (e.statusCode) parts.push(`statusCode=${e.statusCode}`);
+  return parts.filter(Boolean).join(" | ") || JSON.stringify(e);
+}
+
+function isAdmin(profile) {
+  return profile?.role === "admin";
+}
+
+function canDeleteComment(commentUserId) {
+  return isAdmin(currentProfile) || (currentUser?.id && currentUser.id === commentUserId);
+}
+
+// ========= DOM =========
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
 
-// Modal novo post
+// modal
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
 const captionInput = document.getElementById("captionInput");
@@ -12,105 +50,94 @@ const publishPost = document.getElementById("publishPost");
 const cancelPost = document.getElementById("cancelPost");
 const closeModal = document.getElementById("closeModal");
 
-// Logout
+// logout
 const btnLogout = document.getElementById("btnLogout");
 
 let pendingFile = null;
 let currentUser = null;
 let currentProfile = null;
 
-// ===================== HELPERS =====================
-function escapeHtml(str = "") {
-  return str
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+if (!supa?.auth) {
+  alert("Supabase não carregou. Verifique supabaseClient.js e o <script> do supabase-js.");
+  throw new Error("Supabase client missing");
 }
 
-function timeAgo(isoString) {
-  if (!isoString) return "";
-  const d = new Date(isoString);
-  const diffMs = Date.now() - d.getTime();
-  const sec = Math.floor(diffMs / 1000);
-  if (sec < 10) return "agora";
-  if (sec < 60) return `há ${sec}s`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `há ${min} min`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `há ${hr}h`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `há ${day}d`;
-  return d.toLocaleString("pt-BR");
-}
-
-// Monta URL pública do Storage (bucket "posts" público)
-function getPublicImageUrl(path) {
-  const { data } = supa.storage.from("posts").getPublicUrl(path);
-  return data?.publicUrl || "";
-}
-
-// ===================== INIT =====================
+// ========= INIT =========
 async function init() {
-  // Proteção: precisa estar logado
-  const { data: sessionData, error: sessErr } = await supa.auth.getSession();
+  const { data: sessData, error: sessErr } = await supa.auth.getSession();
   if (sessErr) {
     console.error(sessErr);
-    alert("Erro ao ler sessão.");
+    alert("Erro ao checar sessão.");
+    return;
+  }
+
+  if (!sessData.session) {
     window.location.href = "index.html";
     return;
   }
 
-  const session = sessionData?.session;
-  if (!session) {
-    window.location.href = "index.html";
-    return;
-  }
+  currentUser = sessData.session.user;
 
-  currentUser = session.user;
-
-  // Carrega profile (role)
-  const { data: profile, error: profileErr } = await supa
+  const { data: profile, error: profErr } = await supa
     .from("profiles")
     .select("id, role, full_name")
     .eq("id", currentUser.id)
     .single();
 
-  if (profileErr) {
-    console.error(profileErr);
+  if (profErr) {
+    console.error(profErr);
     alert("Erro ao carregar perfil.");
     return;
   }
 
   currentProfile = profile;
 
-  // Se não for admin, esconde botão +
-  if (currentProfile.role !== "admin") {
-    const btn = document.querySelector(".add-post");
-    if (btn) btn.style.display = "none";
-  }
-
-  // Logout
-  if (btnLogout) {
-    btnLogout.addEventListener("click", async () => {
-      try {
-        const { error } = await supa.auth.signOut();
-        if (error) throw error;
-        window.location.href = "index.html";
-      } catch (e) {
-        console.error(e);
-        alert(e?.message || "Erro ao sair.");
-      }
-    });
-  }
+  const plusBtn = document.querySelector(".add-post");
+  if (plusBtn && !isAdmin(currentProfile)) plusBtn.style.display = "none";
 
   await carregarFeed();
 }
 
 init();
 
-// ===================== FEED =====================
+// ========= LOGOUT =========
+if (btnLogout) {
+  btnLogout.addEventListener("click", async () => {
+    try {
+      const { error } = await supa.auth.signOut();
+      if (error) throw error;
+      window.location.href = "index.html";
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao sair: " + errToText(e));
+    }
+  });
+}
+
+// ========= MODAL (corrige warning aria-hidden) =========
+function abrirModal() {
+  if (!postModal) return;
+  postModal.classList.add("show");
+  postModal.setAttribute("aria-hidden", "false");
+}
+
+function fecharModal() {
+  if (!postModal) return;
+  postModal.classList.remove("show");
+  postModal.setAttribute("aria-hidden", "true");
+  pendingFile = null;
+}
+
+if (closeModal) closeModal.addEventListener("click", fecharModal);
+if (cancelPost) cancelPost.addEventListener("click", fecharModal);
+
+if (postModal) {
+  postModal.addEventListener("click", (e) => {
+    if (e.target === postModal) fecharModal();
+  });
+}
+
+// ========= FEED =========
 async function carregarFeed() {
   feed.innerHTML = "";
 
@@ -122,7 +149,7 @@ async function carregarFeed() {
 
   if (error) {
     console.error(error);
-    alert("Erro ao carregar feed.");
+    alert("Erro ao carregar feed: " + errToText(error));
     return;
   }
 
@@ -130,6 +157,11 @@ async function carregarFeed() {
     const card = await renderPost(post);
     feed.appendChild(card);
   }
+}
+
+function getPublicImageUrl(path) {
+  const { data } = supa.storage.from("posts").getPublicUrl(path);
+  return data?.publicUrl || "";
 }
 
 async function renderPost(post) {
@@ -140,8 +172,22 @@ async function renderPost(post) {
   postEl.className = "post";
 
   const imgUrl = getPublicImageUrl(post.image_url);
+  const authorName = post.full_name || "Usuário";
+  const when = fmtWhen(post.created_at);
+
+  const deletePostBtnHtml = isAdmin(currentProfile)
+    ? `<button class="delete-post-btn" title="Apagar post" aria-label="Apagar post">🗑️</button>`
+    : "";
 
   postEl.innerHTML = `
+    <div class="post-top">
+      <div class="post-meta">
+        <div class="post-author">${authorName}</div>
+        <div class="post-when">${when}</div>
+      </div>
+      <div class="post-top-actions">${deletePostBtnHtml}</div>
+    </div>
+
     <img src="${imgUrl}" alt="Post">
 
     <div class="post-actions">
@@ -152,46 +198,47 @@ async function renderPost(post) {
       <span class="comments-count">${post.comments_count} comentários</span>
     </div>
 
-    <p>${escapeHtml(post.caption || "")}</p>
+    <p class="post-caption">${post.caption || ""}</p>
 
     <div class="comments">
-      <div class="comment-row">
-        <input type="text" class="comment-input" placeholder="Adicionar um comentário...">
-        <button class="comment-send" type="button">Enviar</button>
+      <div class="comment-compose">
+        <input class="comment-input" type="text" placeholder="Adicionar um comentário...">
+        <button class="comment-send" type="button" aria-label="Enviar comentário">➤</button>
       </div>
       <ul class="comments-list"></ul>
     </div>
   `;
 
-  // Admin actions (apagar)
-  if (currentProfile?.role === "admin") {
-    const adminBar = document.createElement("div");
-    adminBar.className = "post-admin";
-    adminBar.innerHTML = `
-      <button class="btn-danger" type="button">Apagar post</button>
-    `;
-    postEl.appendChild(adminBar);
-
-    const btnDelete = adminBar.querySelector(".btn-danger");
-    btnDelete.addEventListener("click", async () => {
-      const ok = confirm("Tem certeza que deseja apagar este post? Isso remove curtidas/comentários e a imagem.");
+  // ====== DELETE POST (admin) ======
+  const delPostBtn = postEl.querySelector(".delete-post-btn");
+  if (delPostBtn) {
+    delPostBtn.addEventListener("click", async () => {
+      if (!isAdmin(currentProfile)) return;
+      const ok = confirm("Apagar este post?");
       if (!ok) return;
 
-      btnDelete.disabled = true;
+      delPostBtn.disabled = true;
+
       try {
-        await apagarPostCompleto(post);
-        // remove do DOM
+        // apaga do DB
+        const { error: delDbErr } = await supa.from("posts").delete().eq("id", post.id);
+        if (delDbErr) throw delDbErr;
+
+        // tenta apagar do storage (depende da policy)
+        const { error: delStErr } = await supa.storage.from("posts").remove([post.image_url]);
+        if (delStErr) console.warn("DB ok, storage não apagou:", delStErr);
+
         postEl.remove();
       } catch (e) {
         console.error(e);
-        alert(e?.message || "Erro ao apagar post.");
+        alert("Erro ao apagar post: " + errToText(e));
       } finally {
-        btnDelete.disabled = false;
+        delPostBtn.disabled = false;
       }
     });
   }
 
-  // LIKE
+  // ===== LIKE =====
   const likeBtn = postEl.querySelector(".like-btn");
   const likesSpan = postEl.querySelector(".likes");
 
@@ -220,7 +267,7 @@ async function renderPost(post) {
 
       if (error) {
         console.error(error);
-        alert("Erro ao remover curtida.");
+        alert("Erro ao remover curtida: " + errToText(error));
         return;
       }
 
@@ -235,7 +282,7 @@ async function renderPost(post) {
 
       if (error) {
         console.error(error);
-        alert("Erro ao curtir.");
+        alert("Erro ao curtir: " + errToText(error));
         return;
       }
 
@@ -248,17 +295,30 @@ async function renderPost(post) {
     likesSpan.textContent = post.likes_count + " curtidas";
   });
 
-  // COMMENTS
+  // ===== COMMENTS =====
   const input = postEl.querySelector(".comment-input");
+  const sendBtn = postEl.querySelector(".comment-send");
   const ul = postEl.querySelector(".comments-list");
   const commentsCountSpan = postEl.querySelector(".comments-count");
   const commentBtn = postEl.querySelector(".comment-btn");
-  const sendBtn = postEl.querySelector(".comment-send");
 
   commentBtn.addEventListener("click", () => input.focus());
 
-  // carrega comentários com autor + data
-  await carregarComentariosComAutor(post.id, ul);
+  await carregarComentarios(post.id, ul);
+
+  async function refreshCount() {
+    // pega contagem real (mais robusto)
+    const { count, error } = await supa
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id);
+
+    if (!error && typeof count === "number") {
+      post.comments_count = count;
+      commentsCountSpan.textContent =
+        post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
+    }
+  }
 
   async function enviarComentario() {
     const content = input.value.trim();
@@ -270,91 +330,134 @@ async function renderPost(post) {
         .from("comments")
         .insert({ post_id: post.id, user_id: currentUser.id, content });
 
-      if (error) {
-        console.error(error);
-        alert("Erro ao comentar.");
-        return;
-      }
+      if (error) throw error;
 
       input.value = "";
-
-      post.comments_count += 1;
-      commentsCountSpan.textContent =
-        post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
-
-      await carregarComentariosComAutor(post.id, ul);
+      await carregarComentarios(post.id, ul);
+      await refreshCount();
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao comentar: " + errToText(e));
     } finally {
       sendBtn.disabled = false;
     }
   }
 
-  sendBtn.addEventListener("click", enviarComentario);
-
-  input.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      await enviarComentario();
-    }
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") enviarComentario();
   });
+  sendBtn.addEventListener("click", enviarComentario);
 
   return postEl;
 }
 
-// Puxa comentários e tenta exibir nome/email do autor + tempo
-async function carregarComentariosComAutor(postId, ul) {
+// Carrega comentários + mostra autor + hora + botão apagar (admin ou dono)
+async function carregarComentarios(postId, ul) {
   ul.innerHTML = "";
 
-  // Busca comentários
-  const { data: comments, error } = await supa
+  // tenta join comments -> profiles
+  let rows = null;
+  let joinOk = true;
+
+  const { data: joined, error: joinErr } = await supa
     .from("comments")
-    .select("id, content, created_at, user_id")
+    .select("id, content, created_at, user_id, profiles(full_name)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
-  if (error) {
-    console.error(error);
-    return;
+  if (joinErr) {
+    joinOk = false;
+    console.warn("Join comments->profiles falhou, fallback:", joinErr);
+  } else {
+    rows = joined;
   }
 
-  // Coleta user_ids (pra buscar profiles de uma vez)
-  const userIds = [...new Set(comments.map(c => c.user_id))];
+  if (!joinOk) {
+    const { data: plain, error: plainErr } = await supa
+      .from("comments")
+      .select("id, content, created_at, user_id")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
 
-  let profileMap = {};
-  if (userIds.length) {
-    const { data: проф, error: profErr } = await supa
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", userIds);
-
-    if (!profErr && Array.isArray(проф)) {
-      profileMap = Object.fromEntries(проф.map(p => [p.id, p]));
+    if (plainErr) {
+      console.error(plainErr);
+      return;
     }
+
+    const userIds = [...new Set(plain.map((c) => c.user_id))].filter(Boolean);
+    let nameMap = {};
+
+    if (userIds.length) {
+      const { data: profs } = await supa
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+
+      if (profs?.length) {
+        for (const p of profs) nameMap[p.id] = p.full_name || "Usuário";
+      }
+    }
+
+    rows = plain.map((c) => ({
+      ...c,
+      profiles: { full_name: nameMap[c.user_id] || "Usuário" },
+    }));
   }
 
-  for (const c of comments) {
+  for (const c of rows) {
     const li = document.createElement("li");
+    li.className = "comment-item";
 
-    const p = profileMap[c.user_id];
-    const author =
-      (p?.full_name && p.full_name.trim()) ||
-      // fallback: tenta email do auth (se estiver disponível no token)
-      (c.user_id === currentUser?.id ? (currentUser?.email || "Você") : "Usuário");
+    const name = c.profiles?.full_name || "Usuário";
+    const when = fmtWhen(c.created_at);
+
+    const delBtnHtml = canDeleteComment(c.user_id)
+      ? `<button class="comment-delete" title="Apagar comentário" aria-label="Apagar comentário">🗑️</button>`
+      : "";
 
     li.innerHTML = `
-      <div class="comment-meta">
-        <span class="comment-author">${escapeHtml(author)}</span>
-        <span>•</span>
-        <span>${escapeHtml(timeAgo(c.created_at))}</span>
+      <div class="comment-row">
+        <div class="comment-left">
+          <div class="comment-head">
+            <span class="comment-author">${name}</span>
+            <span class="comment-when">${when}</span>
+          </div>
+          <div class="comment-text">${c.content}</div>
+        </div>
+        <div class="comment-actions">
+          ${delBtnHtml}
+        </div>
       </div>
-      <div class="comment-text">${escapeHtml(c.content || "")}</div>
     `;
+
+    const delBtn = li.querySelector(".comment-delete");
+    if (delBtn) {
+      delBtn.addEventListener("click", async () => {
+        const ok = confirm("Apagar este comentário?");
+        if (!ok) return;
+
+        delBtn.disabled = true;
+        try {
+          const { error } = await supa.from("comments").delete().eq("id", c.id);
+          if (error) throw error;
+
+          li.remove();
+        } catch (e) {
+          console.error(e);
+          alert("Erro ao apagar comentário: " + errToText(e));
+        } finally {
+          delBtn.disabled = false;
+        }
+      });
+    }
+
     ul.appendChild(li);
   }
 }
 
-// ===================== POSTAR (ADMIN) =====================
+// ========= POSTAR (ADMIN) =========
 window.abrirGaleria = function abrirGaleria() {
-  if (!currentProfile || currentProfile.role !== "admin") return;
+  if (!isAdmin(currentProfile)) return;
   fileInput.click();
 };
 
@@ -368,7 +471,7 @@ fileInput.addEventListener("change", () => {
   reader.onload = () => {
     previewImg.src = reader.result;
     captionInput.value = "";
-    postModal.classList.add("show");
+    abrirModal();
     setTimeout(() => captionInput.focus(), 50);
   };
   reader.readAsDataURL(file);
@@ -376,104 +479,44 @@ fileInput.addEventListener("change", () => {
   fileInput.value = "";
 });
 
-function fecharModal() {
-  postModal.classList.remove("show");
-  pendingFile = null;
-}
-
-if (closeModal) closeModal.addEventListener("click", fecharModal);
-if (cancelPost) cancelPost.addEventListener("click", fecharModal);
-
-if (postModal) {
-  postModal.addEventListener("click", (e) => {
-    if (e.target === postModal) fecharModal();
-  });
-}
-
 if (publishPost) {
   publishPost.addEventListener("click", async () => {
     if (!pendingFile) return;
-    if (!currentProfile || currentProfile.role !== "admin") return;
+    if (!isAdmin(currentProfile)) return;
 
     const caption = captionInput.value.trim();
 
-    const ext = pendingFile.name.split(".").pop();
-    const fileName = `${crypto.randomUUID()}.${ext}`;
-    const filePath = `${currentUser.id}/${fileName}`;
+    publishPost.disabled = true;
 
-    // upload storage
-    const { error: upErr } = await supa.storage
-      .from("posts")
-      .upload(filePath, pendingFile, { upsert: false });
+    try {
+      const ext = (pendingFile.name.split(".").pop() || "jpg").toLowerCase();
+      const fileName = `${crypto.randomUUID()}.${ext}`;
+      const filePath = `${currentUser.id}/${fileName}`;
 
-    if (upErr) {
-      console.error(upErr);
-      alert("Erro ao enviar imagem.");
-      return;
+      // upload no storage
+      const { error: upErr } = await supa.storage
+        .from("posts")
+        .upload(filePath, pendingFile, {
+          upsert: false,
+          contentType: pendingFile.type || undefined,
+        });
+
+      if (upErr) throw upErr;
+
+      // salva no DB
+      const { error: insErr } = await supa
+        .from("posts")
+        .insert({ user_id: currentUser.id, caption, image_url: filePath });
+
+      if (insErr) throw insErr;
+
+      fecharModal();
+      await carregarFeed();
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao publicar: " + errToText(e));
+    } finally {
+      publishPost.disabled = false;
     }
-
-    // insert post
-    const { error: insErr } = await supa
-      .from("posts")
-      .insert({
-        user_id: currentUser.id,
-        caption,
-        image_url: filePath,
-      });
-
-    if (insErr) {
-      console.error(insErr);
-      alert("Erro ao criar post.");
-      return;
-    }
-
-    fecharModal();
-    await carregarFeed();
   });
-}
-
-// ===================== APAGAR POST (ADMIN) =====================
-// Remove storage image + comments + likes + post
-async function apagarPostCompleto(post) {
-  if (!currentProfile || currentProfile.role !== "admin") {
-    throw new Error("Apenas admin pode apagar posts.");
-  }
-
-  // 1) tenta remover imagem do Storage (se existir)
-  if (post.image_url) {
-    const { error: stErr } = await supa.storage
-      .from("posts")
-      .remove([post.image_url]);
-
-    // Se falhar por policy, você vai ver aqui
-    if (stErr) {
-      console.error("Storage remove error:", stErr);
-      // Não vou travar total, mas aviso:
-      // (se você preferir travar, troque por: throw stErr;)
-    }
-  }
-
-  // 2) remove comentários do post
-  const { error: cErr } = await supa
-    .from("comments")
-    .delete()
-    .eq("post_id", post.id);
-
-  if (cErr) throw cErr;
-
-  // 3) remove likes do post
-  const { error: lErr } = await supa
-    .from("likes")
-    .delete()
-    .eq("post_id", post.id);
-
-  if (lErr) throw lErr;
-
-  // 4) remove o post
-  const { error: pErr } = await supa
-    .from("posts")
-    .delete()
-    .eq("id", post.id);
-
-  if (pErr) throw pErr;
 }
