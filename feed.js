@@ -434,10 +434,9 @@ async function renderPost(post) {
 async function carregarComentarios(postId, ul) {
   ul.innerHTML = "";
 
-  // join via view/consulta simples: traz author_name quando disponível
   const { data, error } = await supa
     .from("comments")
-    .select("id, content, created_at, user_id, author_name")
+    .select("id, content, created_at, user_id")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -450,30 +449,9 @@ async function carregarComentarios(postId, ul) {
 
   for (const c of data) {
     const li = document.createElement("li");
-    li.style.display = "flex";
-    li.style.alignItems = "flex-start";
-    li.style.justifyContent = "space-between";
-    li.style.gap = "12px";
 
-    const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.flexDirection = "column";
-    left.style.gap = "2px";
-
-    const meta = document.createElement("div");
-    meta.style.fontWeight = "800";
-    meta.style.fontSize = "13px";
-    meta.textContent = `${c.author_name || "Usuário"}  ${fmtDateBR(c.created_at)}`;
-
-    const txt = document.createElement("div");
-    txt.style.fontSize = "13px";
-    txt.style.color = "rgba(255,255,255,0.85)";
-    txt.textContent = c.content;
-
-    left.appendChild(meta);
-    left.appendChild(txt);
-
-    li.appendChild(left);
+    // mantém seu layout atual (sem autor_nome, porque não existe)
+    li.textContent = c.content;
 
     const canDelete = isAdmin || c.user_id === currentUser.id;
     if (canDelete) {
@@ -482,35 +460,21 @@ async function carregarComentarios(postId, ul) {
         const ok = confirm("Excluir este comentário?");
         if (!ok) return;
 
-        delBtn.disabled = true;
-        delBtn.style.opacity = "0.6";
-        delBtn.style.pointerEvents = "none";
-
-        try {
-          const { error } = await supa.from("comments").delete().eq("id", c.id);
-          if (error) throw error;
-          li.remove();
-        } catch (e) {
-          console.error(e);
-          alert(e?.message || "Erro ao excluir comentário.");
-        } finally {
-          delBtn.disabled = false;
-          delBtn.style.opacity = "1";
-          delBtn.style.pointerEvents = "auto";
+        const { error } = await supa.from("comments").delete().eq("id", c.id);
+        if (error) {
+          console.error(error);
+          alert(error.message || "Erro ao excluir comentário.");
+          return;
         }
+        li.remove();
       });
-
       li.appendChild(delBtn);
-    } else {
-      const spacer = document.createElement("div");
-      spacer.style.width = "34px";
-      spacer.style.height = "34px";
-      li.appendChild(spacer);
     }
 
     ul.appendChild(li);
   }
 }
+
 
 // ----------------- Postar (ADMIN) -----------------
 window.abrirGaleria = function abrirGaleria() {
@@ -600,4 +564,5 @@ btnLogout?.addEventListener("click", async () => {
     alert(e?.message || "Erro ao sair.");
   }
 });
+
 
