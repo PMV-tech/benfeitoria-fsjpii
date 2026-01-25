@@ -9,21 +9,20 @@
 <body>
 
   <div class="login-container">
-    
     <div class="login-left">
       <h1>Faça o seu Cadastro<span>.</span></h1>
 
       <label>Email</label>
-      <input type="email" placeholder="Digite seu email">
+      <input id="email" type="email" placeholder="Digite seu email" autocomplete="email">
 
       <label>Senha</label>
-      <input type="password" placeholder="Digite sua senha">
+      <input id="password" type="password" placeholder="Digite sua senha" autocomplete="new-password">
 
       <label>Nome do Usuário</label>
-      <input type="text" placeholder="Digite seu Nome">
+      <input id="fullName" type="text" placeholder="Digite seu Nome" autocomplete="name">
 
       <!-- BOTÃO PRINCIPAL -->
-      <button class="btn-cadastro" onclick="cadastrar()">Cadastrar</button>
+      <button class="btn-cadastro" id="btnCadastrar">Cadastrar</button>
 
       <!-- LINK EMBAIXO -->
       <a href="login.html" class="link-login">
@@ -41,12 +40,15 @@
     © PMV Tech • Tecnologia e Inovação
   </div>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    function cadastrar() {
-      // depois você coloca a lógica real aqui
-      window.location.href = "login.html";
-    }
+    // ✅ use as MESMAS credenciais que você colocou no feed.html
+    const SUPABASE_URL = "https://jephlkjpliduxfdkcoge.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_rIl81hftaIjqsg1zCs8Fpg_G8gBr0td";
+    window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   </script>
 
+  <script src="cad.js"></script>
 </body>
 </html>
