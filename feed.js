@@ -1,5 +1,5 @@
 // feed.js
-const supa = window.supabaseClient; // ✅ padronizado
+const supa = window.supa; // ✅ agora bate com supabaseClient.js
 
 const fileInput = document.getElementById("fileInput");
 const feed = document.getElementById("feed");
@@ -47,7 +47,6 @@ async function init() {
 
   currentProfile = profile;
 
-  // Se NÃO for admin, esconde botão +
   if (currentProfile.role !== "admin") {
     const btn = document.querySelector(".add-post");
     if (btn) btn.style.display = "none";
