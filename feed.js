@@ -436,7 +436,7 @@ async function carregarComentarios(postId, ul) {
 
   // join via view/consulta simples: traz author_name quando disponível
   const { data, error } = await supa
-    .from("v_comments")
+    .from("comments")
     .select("id, content, created_at, user_id, author_name")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
@@ -600,3 +600,4 @@ btnLogout?.addEventListener("click", async () => {
     alert(e?.message || "Erro ao sair.");
   }
 });
+
