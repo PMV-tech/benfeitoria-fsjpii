@@ -9,22 +9,20 @@
 <body>
 
   <div class="login-container">
-    
     <div class="login-left">
       <h1>Faça o seu login<span>.</span></h1>
 
       <label>Email</label>
-      <input type="email" placeholder="Digite seu email">
+      <input id="email" type="email" placeholder="Digite seu email" autocomplete="email">
 
       <label>Senha</label>
-      <input type="password" placeholder="Digite sua senha">
+      <input id="password" type="password" placeholder="Digite sua senha" autocomplete="current-password">
 
-     <button class="btn-entrar" onclick="entrar()">Entrar</button>
+      <button class="btn-entrar" id="btnEntrar">Entrar</button>
 
-      <!-- ✅ BOTÃO EMBAIXO DO ENTRAR -->
       <button class="btn-cadastro" onclick="window.location.href='cad.html'">
-  Não tem cadastro? Cadastre-se
-</button>
+        Não tem cadastro? Cadastre-se
+      </button>
     </div>
 
     <div class="login-right">
@@ -37,11 +35,14 @@
     © PMV Tech • Tecnologia e Inovação
   </div>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    function entrar() {
-      window.location.href = "feed.html";
-    }
+    const SUPABASE_URL = "COLE_AQUI_PROJECT_URL";
+    const SUPABASE_ANON_KEY = "COLE_AQUI_ANON_KEY";
+    window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   </script>
 
+  <script src="index.js"></script>
 </body>
 </html>
