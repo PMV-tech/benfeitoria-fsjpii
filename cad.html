@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Cadastro | FSJPII</title>
-  <link rel="stylesheet" href="cad.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="cad.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
 <body>
 
@@ -13,41 +13,30 @@
       <h1>Faça o seu Cadastro<span>.</span></h1>
 
       <label>Email</label>
-      <input id="email" type="email" placeholder="Digite seu email" autocomplete="email">
+      <input id="cadEmail" type="email" placeholder="Digite seu email" autocomplete="email" />
 
       <label>Senha</label>
-      <input id="password" type="password" placeholder="Digite sua senha" autocomplete="new-password">
+      <input id="cadPass" type="password" placeholder="Digite sua senha" autocomplete="new-password" />
 
       <label>Nome do Usuário</label>
-      <input id="fullName" type="text" placeholder="Digite seu Nome" autocomplete="name">
+      <input id="cadName" type="text" placeholder="Digite seu Nome" />
 
-      <!-- BOTÃO PRINCIPAL -->
       <button class="btn-cadastro" id="btnCadastrar">Cadastrar</button>
 
-      <!-- LINK EMBAIXO -->
-      <a href="login.html" class="link-login">
-        Já tem conta? Fazer login
-      </a>
+      <a href="index.html" class="link-login">Já tem conta? Fazer login</a>
     </div>
 
     <div class="login-right">
-      <img src="fundo_fsjpii.png" alt="FSJPII">
+      <img src="fundo_fsjpii.png" alt="FSJPII" />
       <p>Benfeitoria FSJPII</p>
     </div>
   </div>
 
-  <div class="PMV">
-    © PMV Tech • Tecnologia e Inovação
-  </div>
+  <div class="PMV">© PMV Tech • Tecnologia e Inovação</div>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // ✅ use as MESMAS credenciais que você colocou no feed.html
-    const SUPABASE_URL = "https://jephlkjpliduxfdkcoge.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_rIl81hftaIjqsg1zCs8Fpg_G8gBr0td";
-    window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  </script>
+  <script src="supabaseClient.js"></script>
 
   <script src="cad.js"></script>
 </body>
