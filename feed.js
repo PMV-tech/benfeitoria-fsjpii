@@ -434,9 +434,10 @@ async function renderPost(post) {
 async function carregarComentarios(postId, ul) {
   ul.innerHTML = "";
 
+  // pega comentário + nome do autor via relacionamento com profiles
   const { data, error } = await supa
     .from("comments")
-    .select("id, content, created_at, user_id")
+    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
@@ -447,28 +448,72 @@ async function carregarComentarios(postId, ul) {
 
   const isAdmin = currentProfile?.role === "admin";
 
-  for (const c of data) {
+  for (const c of data || []) {
     const li = document.createElement("li");
+    li.style.display = "flex";
+    li.style.alignItems = "flex-start";
+    li.style.justifyContent = "space-between";
+    li.style.gap = "12px";
 
-    // mantém seu layout atual (sem autor_nome, porque não existe)
-    li.textContent = c.content;
+    // lado esquerdo: meta + texto
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.flexDirection = "column";
+    left.style.gap = "2px";
+    left.style.flex = "1";
 
-    const canDelete = isAdmin || c.user_id === currentUser.id;
+    const authorName = (c.profiles?.full_name || "Usuário").trim();
+
+    const meta = document.createElement("div");
+    meta.style.fontWeight = "800";
+    meta.style.fontSize = "13px";
+    meta.style.color = "rgba(255,255,255,0.92)";
+    meta.textContent = `${authorName}  ${fmtDateBR(c.created_at)}`;
+
+    const txt = document.createElement("div");
+    txt.style.fontSize = "13px";
+    txt.style.color = "rgba(255,255,255,0.85)";
+    txt.textContent = c.content;
+
+    left.appendChild(meta);
+    left.appendChild(txt);
+
+    li.appendChild(left);
+
+    // lado direito: lixeira (admin ou dono)
+    const canDelete = isAdmin || c.user_id === currentUser?.id;
     if (canDelete) {
       const delBtn = makeIconButton({ title: "Excluir comentário", variant: "danger" });
+
       delBtn.addEventListener("click", async () => {
         const ok = confirm("Excluir este comentário?");
         if (!ok) return;
 
-        const { error } = await supa.from("comments").delete().eq("id", c.id);
-        if (error) {
-          console.error(error);
-          alert(error.message || "Erro ao excluir comentário.");
-          return;
+        delBtn.disabled = true;
+        delBtn.style.opacity = "0.6";
+        delBtn.style.pointerEvents = "none";
+
+        try {
+          const { error } = await supa.from("comments").delete().eq("id", c.id);
+          if (error) throw error;
+          li.remove();
+        } catch (e) {
+          console.error(e);
+          alert(e?.message || "Erro ao excluir comentário.");
+        } finally {
+          delBtn.disabled = false;
+          delBtn.style.opacity = "1";
+          delBtn.style.pointerEvents = "auto";
         }
-        li.remove();
       });
+
       li.appendChild(delBtn);
+    } else {
+      // mantém alinhamento
+      const spacer = document.createElement("div");
+      spacer.style.width = "34px";
+      spacer.style.height = "34px";
+      li.appendChild(spacer);
     }
 
     ul.appendChild(li);
@@ -564,5 +609,6 @@ btnLogout?.addEventListener("click", async () => {
     alert(e?.message || "Erro ao sair.");
   }
 });
+
 
 
