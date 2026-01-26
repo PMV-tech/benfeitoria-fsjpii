@@ -203,11 +203,9 @@ button.loading::after {
   color: #fff;
   font-size: 14px;
   opacity: 0.9;
+  margin-top: 14px;
+  display: grid;
 }
-
-
-
-
 
 
 
