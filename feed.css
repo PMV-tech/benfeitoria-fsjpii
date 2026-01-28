@@ -263,7 +263,8 @@ main{
   left: 50%;
   transform: translate(-50%, -50%);
   
-  /* Ajuste fino - altere o segundo valor do translate */
+  /* Ajuste posição do "+"*/
+  transform: translate(-55%, -55%); /* -48% sobe, -52% desce */
   transform: translate(-48%, -55%); /* -48% esquerda, -52% direita */
 }
 .add-post:hover{
@@ -418,3 +419,4 @@ main{
 
   .post p{ font-size: 14px; }
 }
+
