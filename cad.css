@@ -300,10 +300,11 @@ button.loading::after {
     letter-spacing: 1.5px;
   }
 
-  .PMV {
-    margin-top: 14px;
+ .PMV {
+    margin-top: px;
     text-align: center;
     font-size: 12px;
+    display: flex;
   }
 }
 
@@ -367,4 +368,5 @@ button.loading::after {
   opacity: 1;
   text-decoration: underline;
 }
+
 
