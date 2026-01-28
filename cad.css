@@ -90,13 +90,6 @@ body {
 
 
 
-
-
-
-
-
-
-
 /* LADO DIREITO */
 .login-right {
   width: 50%;
@@ -345,18 +338,16 @@ button.loading::after {
 
 /* BOTÃO CADASTRAR */
 .login-left .btn-cadastro{
-  width: 100%;
-  margin-top: 16px;
+  margin-top: 10px;
   padding: 14px;
   border: none;
   border-radius: 10px;
   font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+  font-weight: bold;
+  color: white;
   cursor: pointer;
-  background: linear-gradient(90deg, #6a5cff, #8a2be2, #ffb703);
-  box-shadow: 0 10px 25px rgba(138, 43, 226, 0.35);
-  transition: transform .25s ease, box-shadow .25s ease, opacity .25s ease;
+  background: linear-gradient(90deg, #6a5cff, #c77dff, #ffb703);
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .login-left .btn-cadastro:hover{
@@ -687,4 +678,5 @@ button.loading::after {
   color: #fff;
   text-decoration: underline;
 }
+
 
