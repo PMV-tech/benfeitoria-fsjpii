@@ -381,15 +381,6 @@ main{
   border: 1px solid rgba(255,255,255,0.10);
 }
 
-.PMV {
-  color: #fff;
-  font-size: 14px;
-  opacity: 0.9;
-  margin-top: -10px;
-  display: grid;
-  position: center;
-  text-align: center;
-}
 /* ===================== RESPONSIVO ===================== */
 @media (max-width: 768px){
   .topbar{ height: 58px; }
@@ -415,13 +406,8 @@ main{
 
   .post p{ font-size: 14px; }
 }
- .PMV {
-    margin-top: px;
-    text-align: center;
-    font-size: 12px;
-    display: grid;
-    position: center;
-  }
+
+
 
 
 
