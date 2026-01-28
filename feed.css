@@ -419,7 +419,9 @@ main{
     margin-top: px;
     text-align: center;
     font-size: 12px;
-    display: flex;
+    display: grid;
+    position: center;
   }
+
 
 
