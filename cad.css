@@ -252,7 +252,7 @@ button.loading::after {
     width: 100%;
     max-width: 420px;
     height: auto;
-    flex-direction: column;
+    display: grid;
     border-radius: 16px;
   }
 
@@ -301,10 +301,10 @@ button.loading::after {
   }
 
  .PMV {
-    margin-top: px;
+    margin-top: -5px;
     text-align: center;
     font-size: 12px;
-    display: flex;
+    display: grid;
   }
 }
 
@@ -368,7 +368,3 @@ button.loading::after {
   opacity: 1;
   text-decoration: underline;
 }
-
-
-
-
