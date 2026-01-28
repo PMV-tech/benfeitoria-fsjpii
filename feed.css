@@ -413,10 +413,10 @@ main{
 
   .post p{ font-size: 14px; }
 }
-.PMV {
-  color: #fff;
-  font-size: 14px;
-  opacity: 0.9;
-  margin-top: -10px;
-  display: grid;
-}
+ .PMV {
+    margin-top: px;
+    text-align: center;
+    font-size: 12px;
+    display: flex;
+  }
+
