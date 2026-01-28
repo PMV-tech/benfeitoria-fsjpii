@@ -387,6 +387,8 @@ main{
   opacity: 0.9;
   margin-top: -10px;
   display: grid;
+  position: center;
+  text-align: center;
 }
 /* ===================== RESPONSIVO ===================== */
 @media (max-width: 768px){
@@ -419,4 +421,5 @@ main{
     font-size: 12px;
     display: flex;
   }
+
 
