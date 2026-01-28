@@ -19,7 +19,7 @@ body {
   height: 480px;
   background: linear-gradient(145deg, #0e0e0e, #050505);
   border-radius: 18px;
-  display: flex;
+  display: grid;
   overflow: hidden;
   box-shadow:
     0 0 40px rgba(0,0,0,0.8),
@@ -368,6 +368,7 @@ button.loading::after {
   opacity: 1;
   text-decoration: underline;
 }
+
 
 
 
