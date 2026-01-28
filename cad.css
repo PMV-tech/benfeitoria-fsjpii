@@ -8,9 +8,10 @@
 body {
   height: 100vh;
   background: radial-gradient(circle at top, #1a1a1a, #000);
-  display: grid;
   align-items: center;
   justify-content: center;
+  display: grid;
+  text-align: center;
 }
 
 /* CARD PRINCIPAL */
@@ -19,11 +20,12 @@ body {
   height: 480px;
   background: linear-gradient(145deg, #0e0e0e, #050505);
   border-radius: 18px;
-  display: grid;
+  display: flex;
   overflow: hidden;
   box-shadow:
     0 0 40px rgba(0,0,0,0.8),
     inset 0 0 1px rgba(255,255,255,0.1);
+  margin-top: 80px;
 }
 
 /* LADO ESQUERDO */
@@ -70,11 +72,40 @@ body {
 }
 
 
+/* BOTÃO ENTRAR */
+.btn-entrar {
+  margin-top: 10px;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(90deg, #6a5cff, #c77dff, #ffb703);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
 
+.btn-entrar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(199,125,255,0.4);
+}
 
+/* BOTÃO/ LINK CADASTRO */
+.btn-cadastro {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: center;
+}
 
-
-
+.btn-cadastro:hover {
+  color: #fff;
+  text-decoration: underline;
+}
 
 
 
@@ -173,72 +204,13 @@ button.loading::after {
   color: #fff;
   font-size: 14px;
   opacity: 0.9;
-}
-
-
-
-
-
-
-
-/* BOTÃO CADASTRAR (GARANTIDO) */
-.login-left .btn-cadastro{
-  width: 100%;
-  margin-top: 16px;
-  padding: 14px;
-
-  border: none;
-  border-radius: 10px;
-
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-
-  cursor: pointer;
-  display: block;
-
-  background: linear-gradient(90deg, #6a5cff, #8a2be2, #ffb703);
-  box-shadow: 0 10px 25px rgba(138, 43, 226, 0.35);
-
-  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
-}
-
-.login-left .btn-cadastro:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(199, 125, 255, 0.45);
-  opacity: 0.98;
-}
-
-.login-left .btn-cadastro:active{
-  transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(138, 43, 226, 0.30);
-}
-
-
-
-
-.PMV {
-  color: #fff;
-  font-size: 14px;
-  opacity: 0.9;
   margin-top: -10px;
   display: grid;
 }
 
 
 
-
 /* ✅ RESPONSIVO MOBILE */
-
-@media (max-width: 768px) {
-  .btn-cadastro {
-    padding: 13px;
-    font-size: 15px;
-  }
-}
-
-
-
 @media (max-width: 768px) {
   body {
     height: auto;
@@ -252,14 +224,14 @@ button.loading::after {
     width: 100%;
     max-width: 420px;
     height: auto;
-    display: grid;
+    flex-direction: column;
     border-radius: 16px;
   }
 
   .login-left,
   .login-right {
     width: 100%;
-  }     
+  }
 
   .login-left {
     padding: 26px 20px;
@@ -300,11 +272,11 @@ button.loading::after {
     letter-spacing: 1.5px;
   }
 
- .PMV {
-    margin-top: -5px;
+  .PMV {
+    margin-top: px;
     text-align: center;
     font-size: 12px;
-    display: grid;
+    display: flex;
   }
 }
 
@@ -320,51 +292,25 @@ button.loading::after {
 }
 
 
+.login-left {
+  display: flex;
+  flex-direction: column;
+}
 
+.btn-entrar {
+  margin-top: 20px;
+}
 
-
-
-
-/* BOTÃO CADASTRAR */
-.login-left .btn-cadastro{
-  width: 100%;
-  margin-top: 16px;
-  padding: 14px;
+.btn-cadastro {
+  margin-top: 12px;
+  background: transparent;
   border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
+  color: #aaa;
   cursor: pointer;
-  background: linear-gradient(90deg, #6a5cff, #8a2be2, #ffb703);
-  box-shadow: 0 10px 25px rgba(138, 43, 226, 0.35);
-  transition: transform .25s ease, box-shadow .25s ease, opacity .25s ease;
-}
-
-.login-left .btn-cadastro:hover{
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(199, 125, 255, 0.45);
-  opacity: .98;
-}
-
-.login-left .btn-cadastro:active{
-  transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(138, 43, 226, 0.30);
-}
-
-/* LINK VOLTAR LOGIN (embaixo do botão) */
-.link-login{
-  margin-top: 14px;
-  display: block;
-  text-align: center;
   font-size: 14px;
-  color: #bdbdbd;
-  text-decoration: none;
-  opacity: .9;
-  transition: .2s;
 }
 
-.link-login:hover{
-  opacity: 1;
+.btn-cadastro:hover {
+  color: #fff;
   text-decoration: underline;
 }
