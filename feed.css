@@ -862,6 +862,100 @@ main{
   margin-top: 12px;
 }
 
+/* ===================== MODAL DE QUEM CURTIU ===================== */
+.likes-list {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.like-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 4px 0;
+}
+
+.like-user:hover {
+  background: var(--button-bg);
+  transform: translateX(2px);
+}
+
+.like-user:last-child {
+  border-bottom: none;
+}
+
+.like-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+}
+
+.like-user-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.like-user-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.likes-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.likes-empty i {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+  display: block;
+}
+
+.likes-count-header {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Scrollbar customizada para a lista de curtidas */
+.likes-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.likes-list::-webkit-scrollbar-track {
+  background: var(--border-light);
+  border-radius: 10px;
+}
+
+.likes-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+
+.likes-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 /* ===================== RESPONSIVO ===================== */
 @media (max-width: 768px){
   [data-theme="dark"] body {
@@ -962,6 +1056,22 @@ main{
   .heart-animation {
     font-size: 50px;
   }
+  
+  /* Modal de curtidas responsivo */
+  .like-user {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  
+  .like-user-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  
+  .likes-list {
+    max-height: 350px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -994,4 +1104,13 @@ main{
   .comments-count {
     font-size: 12px;
   }
-}   
+  
+  /* Modal de curtidas responsivo */
+  .like-user-name {
+    font-size: 13px;
+  }
+  
+  .like-user-date {
+    font-size: 10px;
+  }
+}
