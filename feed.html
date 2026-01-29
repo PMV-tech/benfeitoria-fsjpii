@@ -1,20 +1,35 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <title>Feed | Admin FSJPII</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="feed.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
 
   <!-- HEADER -->
   <header class="topbar">
+    <!-- Logo à esquerda -->
+    <div class="logo-container">
+      <img src="logo_fsjpii.png" alt="FSJPII Logo" class="header-logo">
+    </div>
+
+    <!-- Título centralizado -->
     <h2>FSJPII • Admin</h2>
 
-    <!-- botão sai no LUGAR CERTO (no body, dentro do header) -->
-    <button id="btnLogout" class="btn-logout" type="button">Sair</button>
+    <!-- Botões à direita -->
+    <div class="header-actions">
+      <!-- Botão Tema -->
+      <button id="btnTheme" class="btn-theme" type="button" aria-label="Alternar tema">
+        <i class="fas fa-sun"></i>
+      </button>
+      
+      <!-- Botão Sair -->
+      <button id="btnLogout" class="btn-logout" type="button">Sair</button>
+    </div>
   </header>
 
   <!-- FEED -->
@@ -49,6 +64,9 @@
     </div>
   </div>
 
+  <!-- FUNDO DINÂMICO -->
+  <div id="logoBg"></div>
+
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
@@ -56,7 +74,201 @@
   <!-- Seu JS do feed -->
   <script src="feed.js"></script>
 
+  <!-- JS do fundo animado e tema -->
+  <script>
+    // FUNDO ANIMADO COM BOLINHAS EM AMBOS OS TEMAS
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.getElementById('logoBg');
+      let particles = [];
+      let animationId = null;
+      
+      // Criar partículas MUITO LENTAS
+      function createParticles() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const particleCount = Math.floor((width * height) / 7000); // Menos partículas
+        
+        // Limpar partículas anteriores
+        particles = [];
+        container.innerHTML = '';
+        
+        // Distribuição de cores baseada no tema
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const isDark = currentTheme === 'dark';
+        
+        // Para tema escuro: cores vibrantes
+        // Para tema claro: cores suaves
+        const wineCount = Math.floor(particleCount * 0.45);
+        const blueCount = Math.floor(particleCount * 0.45);
+        const goldCount = particleCount - wineCount - blueCount;
+        
+        // Criar partículas
+        createParticleBatch(wineCount, 'particle-wine', isDark);
+        createParticleBatch(blueCount, 'particle-blue', isDark);
+        createParticleBatch(goldCount, 'particle-gold', isDark);
+      }
+      
+      function createParticleBatch(count, colorClass, isDark) {
+        for (let i = 0; i < count; i++) {
+          const particle = document.createElement('div');
+          particle.className = `logo-particle ${colorClass}`;
+          
+          // Tamanho menor no tema claro
+          const size = isDark ? (Math.random() * 4 + 3) : (Math.random() * 3 + 2);
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          
+          // Posição inicial
+          const x = Math.random() * 100;
+          const y = Math.random() * 100;
+          
+          // Velocidade MUITO LENTA (90% mais lento que o original)
+          particles.push({
+            element: particle,
+            x: x,
+            y: y,
+            speedX: (Math.random() - 0.5) * 0.08, // EXTREMAMENTE LENTO
+            speedY: (Math.random() - 0.5) * 0.08, // EXTREMAMENTE LENTO
+            floatSpeed: Math.random() * 0.005 + 0.002, // MUITO LENTO
+            floatPhase: Math.random() * Math.PI * 2,
+            floatAmplitude: Math.random() * 8 + 5, // Amplitude pequena
+            pulseSpeed: Math.random() * 0.002 + 0.0005, // Pulsação MUITO LENTA
+            pulsePhase: Math.random() * Math.PI * 2,
+            colorClass: colorClass,
+            size: size,
+            isDark: isDark
+          });
+          
+          // Posicionar inicialmente
+          updateParticlePosition(particles[particles.length - 1]);
+          container.appendChild(particle);
+        }
+      }
+      
+      function updateParticlePosition(p) {
+        const now = Date.now() * 0.001;
+        
+        // Movimento flutuante MUITO LENTO
+        p.x += p.speedX * 0.04; // EXTREMAMENTE LENTO
+        p.y += p.speedY * 0.04; // EXTREMAMENTE LENTO
+        
+        // Adicionar flutuação MUITO LENTA
+        p.x += Math.cos(now * p.floatSpeed + p.floatPhase) * 0.1;
+        p.y += Math.sin(now * p.floatSpeed * 1.1 + p.floatPhase) * 0.1;
+        
+        // Garantir que não saia da tela
+        if (p.x < 0) p.x = 100;
+        if (p.x > 100) p.x = 0;
+        if (p.y < 0) p.y = 100;
+        if (p.y > 100) p.y = 0;
+        
+        // Pulsação MUITO LENTA
+        const pulse = Math.sin(now * p.pulseSpeed + p.pulsePhase) * 0.15 + 0.7;
+        p.element.style.opacity = pulse;
+        
+        // Efeito de escala muito suave
+        const scale = 1 + Math.sin(now * p.pulseSpeed * 0.4 + p.pulsePhase) * 0.08;
+        p.element.style.transform = `translate(${p.x}vw, ${p.y}vh) scale(${scale})`;
+        
+        // Ajustar opacidade baseada no tema
+        p.element.style.opacity = p.isDark ? pulse * 0.85 : pulse * 0.6;
+      }
+      
+      // Animação
+      function animateParticles() {
+        // Atualizar todas as partículas
+        for (let i = 0; i < particles.length; i++) {
+          updateParticlePosition(particles[i]);
+        }
+        
+        animationId = requestAnimationFrame(animateParticles);
+      }
+      
+      // Inicializar partículas
+      function initParticles() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        container.style.display = 'block';
+        
+        // Atualizar propriedades baseadas no tema
+        particles.forEach(p => {
+          p.isDark = currentTheme === 'dark';
+        });
+        
+        createParticles();
+        if (!animationId) {
+          animationId = requestAnimationFrame(animateParticles);
+        }
+      }
+      
+      // Inicializar
+      initParticles();
+      
+      // Redimensionar com debounce
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          initParticles();
+        }, 300);
+      });
+      
+      // Observar mudanças de tema
+      const themeObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.attributeName === 'data-theme') {
+            setTimeout(() => {
+              initParticles();
+            }, 150);
+          }
+        });
+      });
+      
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+      });
+    });
+    
+    // SISTEMA DE TEMA CLARO/ESCURO
+    document.addEventListener('DOMContentLoaded', function() {
+      const themeButton = document.getElementById('btnTheme');
+      const themeIcon = themeButton.querySelector('i');
+      
+      // Carregar tema salvo ou usar escuro como padrão
+      const savedTheme = localStorage.getItem('fsjpii-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      // Atualizar ícone baseado no tema
+      function updateThemeIcon() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'light') {
+          themeIcon.className = 'fas fa-moon';
+          themeButton.setAttribute('aria-label', 'Alternar para tema escuro');
+        } else {
+          themeIcon.className = 'fas fa-sun';
+          themeButton.setAttribute('aria-label', 'Alternar para tema claro');
+        }
+      }
+      
+      // Inicializar ícone
+      updateThemeIcon();
+      
+      // Alternar tema ao clicar
+      themeButton.addEventListener('click', function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        // Aplicar novo tema
+        document.documentElement.setAttribute('data-theme', newTheme);
+        
+        // Salvar preferência
+        localStorage.setItem('fsjpii-theme', newTheme);
+        
+        // Atualizar ícone
+        updateThemeIcon();
+      });
+    });
+  </script>
+
 </body>
 </html>
-
-
