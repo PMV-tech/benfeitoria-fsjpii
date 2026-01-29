@@ -508,6 +508,48 @@ body {
   }
 }
 
+/* ALERTA AMARELO (CADASTRO) */
+.alert-warning{
+  position: absolute;
+  top: 18px;
+  left: 18px;
+
+  max-width: 360px;
+
+  padding: 12px 14px;
+  border-radius: 14px;
+
+  background: rgba(255, 193, 7, 0.16);
+  border: 1px solid rgba(255, 193, 7, 0.40);
+  color: rgba(255, 255, 255, 0.92);
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+
+  font-size: 13px;
+  line-height: 1.35;
+  z-index: 10;
+}
+
+.alert-warning strong{
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: rgba(255, 215, 100, 0.95);
+}
+
+/* Mobile: vira "barra" no topo */
+@media (max-width: 768px){
+  .alert-warning{
+    position: relative;
+    top: auto;
+    left: auto;
+    max-width: 100%;
+    margin: 0 0 14px 0;
+  }
+}
+
+
 /* EXTRA: celulares bem pequenos */
 @media (max-width: 360px) {
   .login-left {
