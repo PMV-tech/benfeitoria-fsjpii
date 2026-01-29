@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-br" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redefinir Senha | FSJPII</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* Estilos extras para garantir */
+    .password-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      padding: 5px;
+      z-index: 10;
+    }
+    
+    .toggle-password:hover {
+      color: #8a2be2;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BOTÃO DE TEMA FLUTUANTE -->
+  <button id="btnTheme" class="btn-theme-floating" type="button" aria-label="Alternar tema">
+    <i class="fas fa-sun"></i>
+  </button>
+
+  <!-- FUNDO ANIMADO IGUAL AO FEED -->
+  <div id="logoBg"></div>
+
+  <div class="login-container">
+    <div class="login-left">
+      <h1>Redefinir sua senha<span>.</span></h1>
+      
+      <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">
+        Digite sua nova senha e confirme para redefinir o acesso à sua conta.
+      </p>
+
+      <div class="input-group">
+        <label>Nova senha</label>
+        <div class="password-wrapper">
+          <input id="newPassword" type="password" placeholder="Digite a nova senha" autocomplete="new-password" />
+          <button type="button" class="toggle-password" id="toggleNewPassword">
+            <i class="fas fa-eye-slash"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Confirme sua senha</label>
+        <div class="password-wrapper">
+          <input id="confirmPassword" type="password" placeholder="Digite novamente a senha" autocomplete="new-password" />
+          <button type="button" class="toggle-password" id="toggleConfirmPassword">
+            <i class="fas fa-eye-slash"></i>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-entrar" id="btnConfirmarSenha">
+        <span class="btn-text">Confirmar senha</span>
+        <div class="spinner"></div>
+      </button>
+
+      <button class="btn-cadastro" onclick="window.location.href='index.html'">
+        Voltar para o login
+      </button>
+    </div>
+
+    <div class="login-right">
+      <img src="fundo_fsjpii.png" alt="FSJPII" />
+      <p>Benfeitoria FSJPII</p>
+    </div>
+  </div>
+
+  <div class="PMV">© PMV Tech • Tecnologia e Inovação</div>
+
+  <!-- JAVASCRIPT INLINE - 100% FUNCIONAL -->
+  <script>
+  // CÓDIGO JAVASCRIPT DIRETO NO HTML - GARANTIDO FUNCIONAR
+  
+  // Aguardar o DOM carregar completamente
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log("✅ DOM carregado!");
+    
+    // 1. FUNÇÃO PARA ALTERNAR VISIBILIDADE DA SENHA
+    function setupPasswordToggle(inputId, buttonId) {
+      const input = document.getElementById(inputId);
+      const button = document.getElementById(buttonId);
+      
+      if (!input || !button) {
+        console.error("❌ Elemento não encontrado:", inputId, buttonId);
+        return;
+      }
+      
+      console.log("🔧 Configurando toggle para:", inputId);
+      
+      // Configurar clique no botão
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        console.log("👁️ Botão clicado para", inputId);
+        
+        // Encontrar o ícone dentro do botão
+        const icon = this.querySelector('i');
+        if (!icon) {
+          console.error("❌ Ícone não encontrado no botão");
+          return;
+        }
+        
+        // Verificar tipo atual
+        const currentType = input.getAttribute('type');
+        console.log("📝 Tipo atual:", currentType);
+        
+        // Alternar entre password e text
+        if (currentType === 'password') {
+          // MOSTRAR SENHA
+          input.setAttribute('type', 'text');
+          icon.className = 'fas fa-eye'; // Olho aberto
+          this.setAttribute('aria-label', 'Esconder senha');
+          console.log("👁️‍🗨️ Senha VISÍVEL");
+        } else {
+          // ESCONDER SENHA
+          input.setAttribute('type', 'password');
+          icon.className = 'fas fa-eye-slash'; // Olho fechado
+          this.setAttribute('aria-label', 'Mostrar senha');
+          console.log("🙈 Senha ESCONDIDA");
+        }
+        
+        // Focar no input após clicar
+        input.focus();
+      });
+    }
+    
+    // 2. CONFIGURAR AMBOS OS CAMPOS (INDEPENDENTES)
+    setupPasswordToggle('newPassword', 'toggleNewPassword');
+    setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
+    
+    // 3. VALIDAÇÃO EM TEMPO REAL
+    const newPasswordInput = document.getElementById('newPassword');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    
+    if (newPasswordInput) {
+      newPasswordInput.addEventListener('input', function() {
+        const value = this.value;
+        this.classList.remove('input-error', 'input-success');
+        
+        if (value.length === 0) return;
+        
+        if (value.length >= 6) {
+          this.classList.add('input-success');
+        } else {
+          this.classList.add('input-error');
+        }
+      });
+    }
+    
+    if (confirmPasswordInput) {
+      confirmPasswordInput.addEventListener('input', function() {
+        const value = this.value;
+        this.classList.remove('input-error', 'input-success');
+        
+        if (value.length === 0) return;
+        
+        if (value.length >= 6) {
+          this.classList.add('input-success');
+        } else {
+          this.classList.add('input-error');
+        }
+      });
+    }
+    
+    // 4. BOTÃO CONFIRMAR SENHA
+    const btnConfirmar = document.getElementById('btnConfirmarSenha');
+    if (btnConfirmar) {
+      btnConfirmar.addEventListener('click', function() {
+        const newPass = document.getElementById('newPassword').value;
+        const confirmPass = document.getElementById('confirmPassword').value;
+        
+        // Validações básicas
+        if (!newPass || !confirmPass) {
+          alert('⚠️ Preencha ambos os campos de senha.');
+          return;
+        }
+        
+        if (newPass.length < 6) {
+          alert('⚠️ A senha deve ter pelo menos 6 caracteres.');
+          return;
+        }
+        
+        if (newPass !== confirmPass) {
+          alert('⚠️ As senhas não coincidem!');
+          return;
+        }
+        
+        // Mostrar loading
+        this.disabled = true;
+        this.classList.add('loading');
+        
+        // Simular processamento
+        setTimeout(() => {
+          alert('✅ Senha redefinida com sucesso! Redirecionando para login...');
+          window.location.href = 'index.html';
+        }, 1000);
+      });
+    }
+    
+    // 5. ENTER PARA ENVIAR
+    if (newPasswordInput) {
+      newPasswordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (confirmPasswordInput.value) {
+            btnConfirmar.click();
+          } else {
+            confirmPasswordInput.focus();
+          }
+        }
+      });
+    }
+    
+    if (confirmPasswordInput) {
+      confirmPasswordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnConfirmar.click();
+        }
+      });
+    }
+    
+    // 6. FOCAR NO PRIMEIRO CAMPO
+    setTimeout(() => {
+      if (newPasswordInput) {
+        newPasswordInput.focus();
+        console.log("🎯 Campo nova senha com foco!");
+      }
+    }, 300);
+    
+    // 7. TESTE MANUAL DOS BOTÕES
+    console.log("🎉 Tudo configurado!");
+    console.log("👉 Digite algo nos campos e clique nos botões de olho.");
+    console.log("👉 Eles devem funcionar INDEPENDENTEMENTE!");
+    
+    // 8. FUNÇÃO DE TESTE (para debug no console)
+    window.testarBotoes = function() {
+      console.log("🧪 TESTANDO BOTÕES...");
+      console.log("1. Clique manual no botão nova senha:");
+      document.getElementById('toggleNewPassword').click();
+      setTimeout(() => {
+        console.log("2. Clique manual no botão confirmar senha:");
+        document.getElementById('toggleConfirmPassword').click();
+      }, 1000);
+    };
+  });
+  
+  // SISTEMA DE TEMA
+  document.addEventListener('DOMContentLoaded', function() {
+    const themeButton = document.getElementById('btnTheme');
+    if (!themeButton) return;
+    
+    const themeIcon = themeButton.querySelector('i');
+    const savedTheme = localStorage.getItem('fsjpii-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    function updateThemeIcon() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      if (currentTheme === 'light') {
+        themeIcon.className = 'fas fa-moon';
+      } else {
+        themeIcon.className = 'fas fa-sun';
+      }
+    }
+    
+    updateThemeIcon();
+    
+    themeButton.addEventListener('click', function() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('fsjpii-theme', newTheme);
+      updateThemeIcon();
+    });
+  });
+  </script>
+
+  <!-- Fundo animado -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('logoBg');
+    let particles = [];
+    let animationId = null;
+    
+    function createParticles() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const particleCount = Math.floor((width * height) / 7000);
+      
+      particles = [];
+      container.innerHTML = '';
+      
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const isDark = currentTheme === 'dark';
+      
+      const wineCount = Math.floor(particleCount * 0.45);
+      const blueCount = Math.floor(particleCount * 0.45);
+      const goldCount = particleCount - wineCount - blueCount;
+      
+      function createBatch(count, colorClass) {
+        for (let i = 0; i < count; i++) {
+          const particle = document.createElement('div');
+          particle.className = `logo-particle ${colorClass}`;
+          
+          const size = isDark ? (Math.random() * 4 + 3) : (Math.random() * 3 + 2);
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          
+          const x = Math.random() * 100;
+          const y = Math.random() * 100;
+          
+          particles.push({
+            element: particle,
+            x: x,
+            y: y,
+            speedX: (Math.random() - 0.5) * 0.08,
+            speedY: (Math.random() - 0.5) * 0.08,
+          });
+          
+          particle.style.transform = `translate(${x}vw, ${y}vh)`;
+          container.appendChild(particle);
+        }
+      }
+      
+      createBatch(wineCount, 'particle-wine');
+      createBatch(blueCount, 'particle-blue');
+      createBatch(goldCount, 'particle-gold');
+    }
+    
+    function animateParticles() {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        
+        if (p.x < 0) p.x = 100;
+        if (p.x > 100) p.x = 0;
+        if (p.y < 0) p.y = 100;
+        if (p.y > 100) p.y = 0;
+        
+        p.element.style.transform = `translate(${p.x}vw, ${p.y}vh)`;
+      }
+      animationId = requestAnimationFrame(animateParticles);
+    }
+    
+    createParticles();
+    animateParticles();
+    
+    window.addEventListener('resize', () => {
+      createParticles();
+    });
+  });
+  </script>
+
+</body>
+</html>
