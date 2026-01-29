@@ -28,7 +28,7 @@ const STORAGE_KEYS = {
 // Se já estiver logado, vai direto pro feed
 (async function autoRedirectIfLogged() {
   const { data: { session } } = await supa.auth.getSession();
-  if (session) window.location.href = "feed.html";
+  if (session) window.location.href = "index.html";
 })();
 
 // Configurar botões e eventos
