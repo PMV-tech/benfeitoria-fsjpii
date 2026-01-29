@@ -188,7 +188,7 @@ body {
 /* CARD PRINCIPAL */
 .login-container {
   width: 900px;
-  height: 540px;
+  height: 1000px;
   background: var(--bg-card);
   border-radius: 18px;
   display: flex;
@@ -560,5 +560,6 @@ body {
     height: 20px;
   }
 }
+
 
 
