@@ -508,14 +508,15 @@ body {
   }
 }
 
-/* ALERTA AMARELO (CADASTRO) */
+/* ALERTA AMARELO (CADASTRO) - FIX SEM CORTAR */
 .alert-warning{
-  position: absolute;
-  top: 18px;
-  left: 18px;
+  /* em vez de absolute, fica dentro do fluxo e não corta */
+  position: relative;
 
-  max-width: 360px;
+  width: 100%;
+  max-width: 520px;
 
+  margin: 0 0 14px 0;   /* espaço abaixo */
   padding: 12px 14px;
   border-radius: 14px;
 
@@ -538,16 +539,6 @@ body {
   color: rgba(255, 215, 100, 0.95);
 }
 
-/* Mobile: vira "barra" no topo */
-@media (max-width: 768px){
-  .alert-warning{
-    position: relative;
-    top: auto;
-    left: auto;
-    max-width: 100%;
-    margin: 0 0 14px 0;
-  }
-}
 
 
 /* EXTRA: celulares bem pequenos */
@@ -569,4 +560,5 @@ body {
     height: 20px;
   }
 }
+
 
