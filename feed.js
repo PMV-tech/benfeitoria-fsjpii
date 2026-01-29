@@ -16,13 +16,18 @@ const topbarTitle = document.querySelector(".topbar h2");
 const btnLogout = document.getElementById("btnLogout");
 const btnTheme = document.getElementById("btnTheme");
 
-// Modal
+// Modal de novo post
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
 const captionInput = document.getElementById("captionInput");
 const publishPost = document.getElementById("publishPost");
 const cancelPost = document.getElementById("cancelPost");
 const closeModal = document.getElementById("closeModal");
+
+// Modal de curtidas
+const likesModal = document.getElementById("likesModal");
+const closeLikesModal = document.getElementById("closeLikesModal");
+const likesList = document.getElementById("likesList");
 
 // Botão +
 const addPostBtn = document.querySelector(".add-post");
@@ -152,6 +157,204 @@ function getPublicImageUrl(path) {
   const { data } = supa.storage.from("posts").getPublicUrl(path);
   return data?.publicUrl || "";
 }
+
+// ----------------- Função para abrir modal com quem curtiu -----------------
+async function abrirModalCurtidas(postId, postEl = null) {
+  // Mostrar estado de carregamento
+  likesList.innerHTML = `
+    <div class="likes-empty">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Carregando curtidas...</p>
+    </div>
+  `;
+  
+  // Abrir modal
+  likesModal.classList.add("show");
+  likesModal.setAttribute("aria-hidden", "false");
+  
+  try {
+    // BUSCAR CURTIDAS COM LEFT JOIN PARA INCLUIR USUÁRIOS SEM PERFIL
+    const { data: likes, error } = await supa
+      .from("likes")
+      .select(`
+        created_at,
+        user_id,
+        profiles:profiles (
+          full_name
+        )
+      `)
+      .eq("post_id", postId)
+      .order("created_at", { ascending: false });
+    
+    if (error) throw error;
+    
+    // VERIFICAR SE HÁ DISCREPÂNCIA ENTRE O CONTADOR E A LISTA REAL
+    // Isso ajuda a identificar problemas de sincronização
+    console.log(`Curtidas carregadas: ${likes?.length || 0}`, likes);
+    
+    // Atualizar contador se fornecido e se houver discrepância
+    if (postEl) {
+      const likesSpan = postEl.querySelector(".likes");
+      if (likesSpan) {
+        const currentDisplayCount = parseInt(likesSpan.textContent.split(" ")[0]) || 0;
+        const actualCount = likes?.length || 0;
+        
+        // Se houver diferença, atualiza o display
+        if (currentDisplayCount !== actualCount) {
+          likesSpan.textContent = actualCount + " curtidas";
+          
+          // Atualizar também no objeto post
+          const postContainer = postEl.closest('.post');
+          if (postContainer) {
+            const postIdAttr = postContainer.dataset.postId;
+            // Podemos atualizar a visual view se necessário
+            const likeCountElement = postContainer.querySelector('.likes');
+            if (likeCountElement) {
+              likeCountElement.textContent = actualCount + " curtidas";
+            }
+          }
+        }
+      }
+    }
+    
+    // Renderizar lista
+    if (!likes || likes.length === 0) {
+      likesList.innerHTML = `
+        <div class="likes-empty">
+          <i class="far fa-heart"></i>
+          <p>Ninguém curtiu ainda</p>
+          <small>Seja o primeiro a curtir!</small>
+        </div>
+      `;
+      return;
+    }
+    
+    // Criar header com contador
+    const header = document.createElement("div");
+    header.className = "likes-count-header";
+    header.textContent = `${likes.length} ${likes.length === 1 ? 'curtida' : 'curtidas'}`;
+    
+    // Criar lista de usuários
+    const usersList = document.createElement("div");
+    
+    let hasCurrentUser = false;
+    
+    likes.forEach((like, index) => {
+      const userDiv = document.createElement("div");
+      userDiv.className = "like-user";
+      
+      // Criar avatar com inicial
+      const avatarDiv = document.createElement("div");
+      avatarDiv.className = "like-user-avatar";
+      
+      let userName = "Usuário";
+      let initials = "U";
+      const isCurrentUser = like.user_id === currentUser?.id;
+      
+      if (isCurrentUser) {
+        hasCurrentUser = true;
+      }
+      
+      if (like.profiles && like.profiles.full_name) {
+        userName = like.profiles.full_name;
+        initials = userName
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+      } else if (isCurrentUser && currentProfile?.full_name) {
+        userName = currentProfile.full_name;
+        initials = userName
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+      } else {
+        // Se não tem nome, mostra ID ou "Usuário"
+        userName = `Usuário ${like.user_id?.substring(0, 4) || ''}`;
+        initials = "U";
+      }
+      
+      // Adicionar indicador "Você" se for o usuário atual
+      if (isCurrentUser) {
+        userName += " (Você)";
+      }
+      
+      avatarDiv.textContent = initials;
+      avatarDiv.title = userName;
+      
+      // Criar info do usuário
+      const infoDiv = document.createElement("div");
+      
+      const nameDiv = document.createElement("div");
+      nameDiv.className = "like-user-name";
+      nameDiv.textContent = userName;
+      
+      const dateDiv = document.createElement("div");
+      dateDiv.className = "like-user-date";
+      dateDiv.textContent = `Curtiu em ${fmtDateBR(like.created_at)}`;
+      
+      infoDiv.appendChild(nameDiv);
+      infoDiv.appendChild(dateDiv);
+      
+      userDiv.appendChild(avatarDiv);
+      userDiv.appendChild(infoDiv);
+      
+      usersList.appendChild(userDiv);
+    });
+    
+    // Adicionar nota se o contador estiver diferente
+    if (postEl) {
+      const likesSpan = postEl.querySelector(".likes");
+      if (likesSpan) {
+        const displayCount = parseInt(likesSpan.textContent.split(" ")[0]) || 0;
+        if (displayCount > likes.length) {
+          const noteDiv = document.createElement("div");
+          noteDiv.className = "likes-note";
+          noteDiv.style.fontSize = "12px";
+          noteDiv.style.color = "var(--text-muted)";
+          noteDiv.style.textAlign = "center";
+          noteDiv.style.marginTop = "10px";
+          noteDiv.style.padding = "8px";
+          noteDiv.style.backgroundColor = "var(--button-bg)";
+          noteDiv.style.borderRadius = "8px";
+          noteDiv.innerHTML = `<i class="fas fa-info-circle"></i> Alguns usuários podem não aparecer na lista`;
+          usersList.appendChild(noteDiv);
+        }
+      }
+    }
+    
+    // Limpar e adicionar conteúdo
+    likesList.innerHTML = '';
+    likesList.appendChild(header);
+    likesList.appendChild(usersList);
+    
+  } catch (error) {
+    console.error("Erro ao carregar curtidas:", error);
+    likesList.innerHTML = `
+      <div class="likes-empty">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Erro ao carregar curtidas</p>
+        <small>Tente novamente mais tarde</small>
+      </div>
+    `;
+  }
+}
+
+// Fechar modal de curtidas
+function fecharModalCurtidas() {
+  likesModal.classList.remove("show");
+  likesModal.setAttribute("aria-hidden", "true");
+}
+
+// Event listeners para o modal de curtidas
+closeLikesModal?.addEventListener("click", fecharModalCurtidas);
+
+likesModal?.addEventListener("click", (e) => {
+  if (e.target === likesModal) fecharModalCurtidas();
+});
 
 // ----------------- Auth / Perfil -----------------
 async function init() {
@@ -481,10 +684,29 @@ async function renderPost(post) {
   actions.innerHTML = `
     <button class="like-btn" aria-label="Curtir">🤍</button>
     <button class="comment-btn" aria-label="Comentar">💬</button>
-    <span class="likes">${post.likes_count} curtidas</span>
+    <span class="likes" style="cursor: pointer; transition: all 0.2s ease;" 
+          title="Clique para ver quem curtiu">${post.likes_count} curtidas</span>
     <span class="comments-count">${post.comments_count} comentários</span>
   `;
   postEl.appendChild(actions);
+
+  // Adicionar evento para abrir modal de curtidas ao clicar no contador
+  const likesSpan = postEl.querySelector(".likes");
+  likesSpan.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    await abrirModalCurtidas(post.id, postEl);
+  });
+  
+  // Estilo hover para o contador de curtidas
+  likesSpan.addEventListener("mouseenter", () => {
+    likesSpan.style.opacity = "0.8";
+    likesSpan.style.textDecoration = "underline";
+  });
+  
+  likesSpan.addEventListener("mouseleave", () => {
+    likesSpan.style.opacity = "1";
+    likesSpan.style.textDecoration = "none";
+  });
 
   // Caption
   const caption = document.createElement("p");
@@ -577,7 +799,6 @@ async function renderPost(post) {
 
   // LIKE
   const likeBtn = postEl.querySelector(".like-btn");
-  const likesSpan = postEl.querySelector(".likes");
 
   const { data: likedRow } = await supa
     .from("likes")
@@ -1159,11 +1380,11 @@ async function carregarTodosComentarios(postId, container, titleElement, totalCo
           const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
           if (postElement) {
             const commentsCountSpan = postElement.querySelector('.comments-count');
-            if (commentsCountSpan) {
-              const newCount = currentCount - 1;
-              commentsCountSpan.textContent = newCount + 
-                (newCount === 1 ? " comentário" : " comentários");
-            }
+              if (commentsCountSpan) {
+                const newCount = currentCount - 1;
+                commentsCountSpan.textContent = newCount + 
+                  (newCount === 1 ? " comentário" : " comentários");
+              }
             
             // Atualizar visibilidade do botão "Ver mais"
             const seeMoreContainer = postElement.querySelector('.comments > div:last-child');
@@ -1282,6 +1503,18 @@ btnLogout?.addEventListener("click", async () => {
   } catch (e) {
     console.error(e);
     alert(e?.message || "Erro ao sair.");
+  }
+});
+
+// Fechar modais com tecla ESC
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (likesModal.classList.contains("show")) {
+      fecharModalCurtidas();
+    }
+    if (postModal.classList.contains("show")) {
+      fecharModal();
+    }
   }
 });
 
