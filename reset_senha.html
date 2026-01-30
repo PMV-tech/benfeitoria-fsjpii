@@ -6,14 +6,14 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel ="icon" href = "logo_fsjpii.ico">
+  <link rel="icon" href="logo_fsjpii.ico">
   <style>
     /* Estilos extras para garantir */
     .password-wrapper {
       position: relative;
       width: 100%;
     }
-    
+
     .toggle-password {
       position: absolute;
       right: 10px;
@@ -26,7 +26,7 @@
       padding: 5px;
       z-index: 10;
     }
-    
+
     .toggle-password:hover {
       color: #8a2be2;
     }
@@ -45,7 +45,7 @@
   <div class="login-container">
     <div class="login-left">
       <h1>Redefinir sua senha<span>.</span></h1>
-      
+
       <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 25px; line-height: 1.5;">
         Digite sua nova senha e confirme para redefinir o acesso à sua conta.
       </p>
@@ -88,44 +88,137 @@
 
   <div class="PMV">© PMV Tech • Tecnologia e Inovação</div>
 
-  <!-- JAVASCRIPT INLINE - 100% FUNCIONAL -->
+  <!-- ✅ SUPABASE (necessário para atualizar a senha de verdade) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabaseClient.js"></script>
+
+  <!-- JAVASCRIPT INLINE -->
   <script>
-  // CÓDIGO JAVASCRIPT DIRETO NO HTML - GARANTIDO FUNCIONAR
-  
+  // CÓDIGO JAVASCRIPT DIRETO NO HTML
+
   // Aguardar o DOM carregar completamente
   document.addEventListener('DOMContentLoaded', function() {
     console.log("✅ DOM carregado!");
-    
+
+    // =========================
+    // ✅ SUPABASE - FUNÇÕES DE RECOVERY
+    // =========================
+    const supa = window.supa;
+
+    function parseHashParams() {
+      // Ex: #access_token=...&refresh_token=...&type=recovery&expires_in=3600
+      const hash = window.location.hash && window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : '';
+      const params = new URLSearchParams(hash);
+      return {
+        access_token: params.get('access_token'),
+        refresh_token: params.get('refresh_token'),
+        type: params.get('type'),
+      };
+    }
+
+    async function ensureRecoverySession() {
+      if (!supa) {
+        console.error("❌ window.supa não encontrado. Verifique supabaseClient.js");
+        alert("❌ Erro: Supabase não inicializou. Confira supabaseClient.js");
+        return false;
+      }
+
+      // 1) se já tem sessão, ok
+      const { data: sessData } = await supa.auth.getSession();
+      if (sessData && sessData.session) {
+        console.log("✅ Já existe sessão ativa para reset");
+        return true;
+      }
+
+      // 2) tenta criar sessão a partir do hash do link de recovery
+      const { access_token, refresh_token, type } = parseHashParams();
+
+      if (type !== 'recovery') {
+        console.warn("⚠️ type não é recovery (type =", type, ")");
+      }
+
+      if (access_token && refresh_token) {
+        console.log("🔐 Criando sessão a partir do hash...");
+        const { data, error } = await supa.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+
+        if (error || !data || !data.session) {
+          console.error("❌ Erro setSession:", error);
+          alert("❌ Link de recuperação inválido ou expirado. Peça um novo link e tente novamente.");
+          return false;
+        }
+
+        // Limpa o hash (boa prática)
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+
+        console.log("✅ Sessão de recovery criada!");
+        return true;
+      }
+
+      // 3) sem sessão e sem tokens: abriu a página direto (ou redirect errado)
+      console.error("❌ Sem tokens no hash. Abra a página pelo link do e-mail.");
+      alert("❌ Abra esta página pelo link do e-mail de recuperação (o link atual não trouxe tokens).");
+      return false;
+    }
+
+    async function atualizarSenhaNoSupabase(novaSenha) {
+      const ok = await ensureRecoverySession();
+      if (!ok) return false;
+
+      console.log("🔄 Atualizando senha no Supabase...");
+      const { data, error } = await supa.auth.updateUser({ password: novaSenha });
+      if (error) {
+        console.error("❌ updateUser error:", error);
+        alert("❌ Não foi possível atualizar a senha: " + (error.message || "erro desconhecido"));
+        return false;
+      }
+
+      console.log("✅ Senha atualizada!", data);
+
+      // Faz logout da sessão temporária do recovery e volta pro login
+      await supa.auth.signOut();
+
+      alert("✅ Senha redefinida com sucesso! Agora faça login com a nova senha.");
+      window.location.href = 'index.html';
+      return true;
+    }
+
+    // =========================
     // 1. FUNÇÃO PARA ALTERNAR VISIBILIDADE DA SENHA
+    // =========================
     function setupPasswordToggle(inputId, buttonId) {
       const input = document.getElementById(inputId);
       const button = document.getElementById(buttonId);
-      
+
       if (!input || !button) {
         console.error("❌ Elemento não encontrado:", inputId, buttonId);
         return;
       }
-      
+
       console.log("🔧 Configurando toggle para:", inputId);
-      
+
       // Configurar clique no botão
       button.addEventListener('click', function(event) {
         event.preventDefault();
         event.stopPropagation();
-        
+
         console.log("👁️ Botão clicado para", inputId);
-        
+
         // Encontrar o ícone dentro do botão
         const icon = this.querySelector('i');
         if (!icon) {
           console.error("❌ Ícone não encontrado no botão");
           return;
         }
-        
+
         // Verificar tipo atual
         const currentType = input.getAttribute('type');
         console.log("📝 Tipo atual:", currentType);
-        
+
         // Alternar entre password e text
         if (currentType === 'password') {
           // MOSTRAR SENHA
@@ -140,27 +233,27 @@
           this.setAttribute('aria-label', 'Mostrar senha');
           console.log("🙈 Senha ESCONDIDA");
         }
-        
+
         // Focar no input após clicar
         input.focus();
       });
     }
-    
+
     // 2. CONFIGURAR AMBOS OS CAMPOS (INDEPENDENTES)
     setupPasswordToggle('newPassword', 'toggleNewPassword');
     setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
-    
+
     // 3. VALIDAÇÃO EM TEMPO REAL
     const newPasswordInput = document.getElementById('newPassword');
     const confirmPasswordInput = document.getElementById('confirmPassword');
-    
+
     if (newPasswordInput) {
       newPasswordInput.addEventListener('input', function() {
         const value = this.value;
         this.classList.remove('input-error', 'input-success');
-        
+
         if (value.length === 0) return;
-        
+
         if (value.length >= 6) {
           this.classList.add('input-success');
         } else {
@@ -168,14 +261,14 @@
         }
       });
     }
-    
+
     if (confirmPasswordInput) {
       confirmPasswordInput.addEventListener('input', function() {
         const value = this.value;
         this.classList.remove('input-error', 'input-success');
-        
+
         if (value.length === 0) return;
-        
+
         if (value.length >= 6) {
           this.classList.add('input-success');
         } else {
@@ -183,42 +276,46 @@
         }
       });
     }
-    
+
     // 4. BOTÃO CONFIRMAR SENHA
     const btnConfirmar = document.getElementById('btnConfirmarSenha');
     if (btnConfirmar) {
-      btnConfirmar.addEventListener('click', function() {
+      btnConfirmar.addEventListener('click', async function() {
         const newPass = document.getElementById('newPassword').value;
         const confirmPass = document.getElementById('confirmPassword').value;
-        
+
         // Validações básicas
         if (!newPass || !confirmPass) {
           alert('⚠️ Preencha ambos os campos de senha.');
           return;
         }
-        
+
         if (newPass.length < 6) {
           alert('⚠️ A senha deve ter pelo menos 6 caracteres.');
           return;
         }
-        
+
         if (newPass !== confirmPass) {
           alert('⚠️ As senhas não coincidem!');
           return;
         }
-        
+
         // Mostrar loading
         this.disabled = true;
         this.classList.add('loading');
-        
-        // Simular processamento
-        setTimeout(() => {
-          alert('✅ Senha redefinida com sucesso! Redirecionando para login...');
-          window.location.href = 'index.html';
-        }, 1000);
+
+        try {
+          // ✅ Atualiza a senha de verdade no Supabase
+          await atualizarSenhaNoSupabase(newPass);
+        } finally {
+          // Se atualizarSenhaNoSupabase redirecionar, não vai dar tempo,
+          // mas se der erro, reativa o botão
+          this.disabled = false;
+          this.classList.remove('loading');
+        }
       });
     }
-    
+
     // 5. ENTER PARA ENVIAR
     if (newPasswordInput) {
       newPasswordInput.addEventListener('keypress', function(e) {
@@ -232,7 +329,7 @@
         }
       });
     }
-    
+
     if (confirmPasswordInput) {
       confirmPasswordInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -241,7 +338,7 @@
         }
       });
     }
-    
+
     // 6. FOCAR NO PRIMEIRO CAMPO
     setTimeout(() => {
       if (newPasswordInput) {
@@ -249,12 +346,11 @@
         console.log("🎯 Campo nova senha com foco!");
       }
     }, 300);
-    
+
     // 7. TESTE MANUAL DOS BOTÕES
     console.log("🎉 Tudo configurado!");
     console.log("👉 Digite algo nos campos e clique nos botões de olho.");
-    console.log("👉 Eles devem funcionar INDEPENDENTEMENTE!");
-    
+
     // 8. FUNÇÃO DE TESTE (para debug no console)
     window.testarBotoes = function() {
       console.log("🧪 TESTANDO BOTÕES...");
@@ -265,17 +361,21 @@
         document.getElementById('toggleConfirmPassword').click();
       }, 1000);
     };
+
+    // ✅ tenta “ativar” sessão logo ao abrir (melhor UX)
+    // se der erro, vai avisar no alert quando clicar confirmar também
+    ensureRecoverySession();
   });
-  
+
   // SISTEMA DE TEMA
   document.addEventListener('DOMContentLoaded', function() {
     const themeButton = document.getElementById('btnTheme');
     if (!themeButton) return;
-    
+
     const themeIcon = themeButton.querySelector('i');
     const savedTheme = localStorage.getItem('fsjpii-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    
+
     function updateThemeIcon() {
       const currentTheme = document.documentElement.getAttribute('data-theme');
       if (currentTheme === 'light') {
@@ -284,9 +384,9 @@
         themeIcon.className = 'fas fa-sun';
       }
     }
-    
+
     updateThemeIcon();
-    
+
     themeButton.addEventListener('click', function() {
       const currentTheme = document.documentElement.getAttribute('data-theme');
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -303,34 +403,34 @@
     const container = document.getElementById('logoBg');
     let particles = [];
     let animationId = null;
-    
+
     function createParticles() {
       const width = window.innerWidth;
       const height = window.innerHeight;
       const particleCount = Math.floor((width * height) / 7000);
-      
+
       particles = [];
       container.innerHTML = '';
-      
+
       const currentTheme = document.documentElement.getAttribute('data-theme');
       const isDark = currentTheme === 'dark';
-      
+
       const wineCount = Math.floor(particleCount * 0.45);
       const blueCount = Math.floor(particleCount * 0.45);
       const goldCount = particleCount - wineCount - blueCount;
-      
+
       function createBatch(count, colorClass) {
         for (let i = 0; i < count; i++) {
           const particle = document.createElement('div');
           particle.className = `logo-particle ${colorClass}`;
-          
+
           const size = isDark ? (Math.random() * 4 + 3) : (Math.random() * 3 + 2);
           particle.style.width = `${size}px`;
           particle.style.height = `${size}px`;
-          
+
           const x = Math.random() * 100;
           const y = Math.random() * 100;
-          
+
           particles.push({
             element: particle,
             x: x,
@@ -338,36 +438,36 @@
             speedX: (Math.random() - 0.5) * 0.08,
             speedY: (Math.random() - 0.5) * 0.08,
           });
-          
+
           particle.style.transform = `translate(${x}vw, ${y}vh)`;
           container.appendChild(particle);
         }
       }
-      
+
       createBatch(wineCount, 'particle-wine');
       createBatch(blueCount, 'particle-blue');
       createBatch(goldCount, 'particle-gold');
     }
-    
+
     function animateParticles() {
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.speedX;
         p.y += p.speedY;
-        
+
         if (p.x < 0) p.x = 100;
         if (p.x > 100) p.x = 0;
         if (p.y < 0) p.y = 100;
         if (p.y > 100) p.y = 0;
-        
+
         p.element.style.transform = `translate(${p.x}vw, ${p.y}vh)`;
       }
       animationId = requestAnimationFrame(animateParticles);
     }
-    
+
     createParticles();
     animateParticles();
-    
+
     window.addEventListener('resize', () => {
       createParticles();
     });
