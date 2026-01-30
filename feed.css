@@ -956,6 +956,49 @@ main{
   background: var(--text-muted);
 }
 
+/* Evita o body virar o "scroll" e mantém layout estável */
+html, body {
+  height: 100%;
+  overflow: hidden; /* trava scroll do navegador */
+}
+
+/* Seu scroll "manual" do site */
+.app-scroll {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  /* mantém espaço da barra consistente sem empurrar o layout */
+  scrollbar-gutter: stable both-edges;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #c9a23a rgba(255,255,255,0.08);
+}
+
+/* Chrome/Edge/Opera/Safari */
+.app-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.app-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  margin: 10px 0; /* dá respiro no topo/baixo */
+}
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d8b14a, #a67c00);
+  border-radius: 999px;
+  border: 3px solid rgba(0,0,0,0.25); /* cria “outline” bonito */
+}
+
+.app-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e6c15a, #b88900);
+}
+
+
+
 /* ===================== RESPONSIVO ===================== */
 @media (max-width: 768px){
   [data-theme="dark"] body {
@@ -1115,6 +1158,11 @@ main{
   }
 }
 
-
-
-
+@media (max-width: 768px) {
+  .app-scroll::-webkit-scrollbar {
+    width: 0px;
+  }
+  .app-scroll {
+    scrollbar-width: none; /* Firefox */
+  }
+}
