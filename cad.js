@@ -2,7 +2,7 @@
 const supa = window.supa;
 
 // ===== CONFIG =====
-const EMAIL_REDIRECT_TO = "https://pmv-tech.github.io/benfeitoria-fsjpii/index.html"; // <-- AJUSTE AQUI
+const EMAIL_REDIRECT_TO = "https://pmv-tech.github.io/benfeitoria-fsjpii/index.html"; // AJUSTE
 
 // Elementos do DOM
 const emailEl = document.getElementById("cadEmail");
@@ -14,17 +14,14 @@ const passwordInput = document.getElementById("cadPass");
 
 // Configurar botões e eventos
 function setupEventListeners() {
-  // Botão cadastrar
   btn.addEventListener("click", cadastrar);
 
-  // Botão mostrar/esconder senha
   if (togglePasswordBtn && passwordInput) {
     togglePasswordBtn.addEventListener("click", togglePasswordVisibility);
     togglePasswordBtn.querySelector("i").className = "fas fa-eye-slash";
     togglePasswordBtn.setAttribute("aria-label", "Mostrar senha");
   }
 
-  // Enter para enviar formulário
   emailEl.addEventListener("keypress", function (e) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -56,13 +53,11 @@ function setupEventListeners() {
     }
   });
 
-  // Validação em tempo real
   emailEl.addEventListener("input", validateEmail);
   passEl.addEventListener("input", validatePassword);
   nameEl.addEventListener("input", validateName);
 }
 
-// Mostrar/esconder senha
 function togglePasswordVisibility() {
   const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
   passwordInput.setAttribute("type", type);
@@ -77,7 +72,6 @@ function togglePasswordVisibility() {
   }
 }
 
-// Validação de email
 function validateEmail() {
   const email = emailEl.value.trim();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -98,7 +92,6 @@ function validateEmail() {
   }
 }
 
-// Validação de senha
 function validatePassword() {
   const password = passEl.value;
 
@@ -118,7 +111,6 @@ function validatePassword() {
   }
 }
 
-// Validação de nome
 function validateName() {
   const name = nameEl.value.trim();
 
@@ -138,18 +130,16 @@ function validateName() {
   }
 }
 
-// ===== NOVO: checar se full_name já existe no profiles (case-insensitive) =====
-async function nomeJaExiste(full_name) {
-  // Importante: isso depende de você ter permissão de SELECT em profiles via RLS.
-  // Se der "permission denied", aí você precisa criar policy de read ou usar RPC.
-  const { data, error } = await supa
-    .from("profiles")
-    .select("id")
-    .ilike("full_name", full_name)
-    .limit(1);
+// ===== RPC: checa se nome está disponível =====
+async function isFullNameAvailable(full_name) {
+  const { data, error } = await supa.rpc("is_full_name_available", {
+    p_full_name: full_name,
+  });
 
   if (error) throw error;
-  return Array.isArray(data) && data.length > 0;
+
+  // data é boolean
+  return data === true;
 }
 
 // Função de cadastro
@@ -158,7 +148,6 @@ async function cadastrar() {
   const password = passEl.value;
   const full_name = nameEl.value.trim();
 
-  // Validação básica
   if (!email) {
     emailEl.focus();
     emailEl.classList.add("input-error");
@@ -180,70 +169,70 @@ async function cadastrar() {
     return;
   }
 
-  // Validação de formato de email
   if (!validateEmail()) {
     alert("Por favor, insira um email válido.");
     return;
   }
 
-  // Validação de tamanho da senha
   if (!validatePassword()) {
     alert("A senha deve ter pelo menos 6 caracteres.");
     return;
   }
 
-  // Validação de nome
   if (!validateName()) {
     alert("O nome deve ter pelo menos 2 caracteres.");
     return;
   }
 
-  // Estado de carregamento
   btn.disabled = true;
   btn.classList.add("loading");
   btn.setAttribute("aria-label", "Cadastrando...");
 
   try {
-    // ===== NOVO: valida nome ANTES de cadastrar =====
-    const existe = await nomeJaExiste(full_name);
-    if (existe) {
+    // ===== 1) valida nome no BANCO (funciona de verdade) =====
+    const ok = await isFullNameAvailable(full_name);
+    if (!ok) {
       nameEl.classList.remove("input-success");
       nameEl.classList.add("input-error");
-      alert("Esse nome já está em uso. Escolha outro.");
+      alert("Esse nome de usuário já existe. Escolha outro.");
       return;
     }
 
+    // ===== 2) signup (email duplicado pode retornar OK por design) =====
     const { data, error } = await supa.auth.signUp({
       email,
       password,
       options: {
         data: { full_name },
-        emailRedirectTo: EMAIL_REDIRECT_TO, // ===== NOVO: resolve 404 do email =====
+        emailRedirectTo: EMAIL_REDIRECT_TO,
       },
     });
 
     if (error) throw error;
 
-    // Feedback visual de sucesso
     emailEl.classList.add("input-success");
     passEl.classList.add("input-success");
     nameEl.classList.add("input-success");
 
-    // Pequeno delay para mostrar o feedback
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
-    // Se exigir confirmação por email, session pode vir null
-    // Nesse caso NÃO tenta update em profiles (geralmente não tem sessão ainda)
+    // Se exigir confirmação por email (normal em produção)
     if (!data.session) {
-      alert("Cadastro iniciado! Agora confirme seu email e depois faça login.");
+      alert(
+        "Cadastro iniciado! Agora confirme seu email e depois faça login.\n\n" +
+        "Obs: se esse email já existir, o Supabase pode mostrar essa mesma mensagem por segurança."
+      );
       window.location.href = "index.html";
       return;
     }
 
-    // Se já logou, atualiza o profile (se existir)
+    // Se logou direto (sem confirmação), pode atualizar profile se quiser
     const userId = data.user?.id || data.session.user.id;
 
-    const { error: upErr } = await supa.from("profiles").update({ full_name }).eq("id", userId);
+    const { error: upErr } = await supa
+      .from("profiles")
+      .update({ full_name })
+      .eq("id", userId);
 
     if (upErr) console.warn("Não consegui atualizar profiles:", upErr);
 
@@ -252,7 +241,6 @@ async function cadastrar() {
   } catch (e) {
     console.error("Erro de cadastro:", e);
 
-    // Feedback visual de erro
     emailEl.classList.remove("input-success");
     passEl.classList.remove("input-success");
     nameEl.classList.remove("input-success");
@@ -261,42 +249,31 @@ async function cadastrar() {
     passEl.classList.add("input-error");
     nameEl.classList.add("input-error");
 
-    // Mensagens de erro específicas
     let errorMessage = "Erro ao cadastrar.";
-
     const msg = (e && e.message ? String(e.message) : "").toLowerCase();
 
-    if (msg.includes("user already registered") || msg.includes("already registered")) {
-      errorMessage = "Este email já está cadastrado.";
-    } else if (msg.includes("duplicate key value") && msg.includes("profiles_full_name_unique")) {
-      errorMessage = "Esse nome já está em uso. Escolha outro.";
-    } else if (msg.includes("password") && msg.includes("at least")) {
+    if (msg.includes("password") && msg.includes("at least")) {
       errorMessage = "A senha deve ter pelo menos 6 caracteres.";
     } else if (msg.includes("invalid email")) {
       errorMessage = "Por favor, insira um email válido.";
-    } else if (msg.includes("permission denied") || msg.includes("violates row-level security")) {
-      errorMessage =
-        "Seu banco bloqueou a validação do nome (RLS). Ative leitura em profiles ou use uma função RPC para validar.";
+    } else if (msg.includes("rpc") || msg.includes("function") || msg.includes("permission")) {
+      errorMessage = "Erro ao validar nome no banco. Confere se você criou a RPC (SQL) certinho.";
     } else {
       errorMessage = e.message || "Erro ao cadastrar.";
     }
 
     alert(errorMessage);
   } finally {
-    // Restaurar estado normal
     btn.disabled = false;
     btn.classList.remove("loading");
     btn.removeAttribute("aria-label");
   }
 }
 
-// Inicializar quando o DOM estiver pronto
+// Inicializar
 document.addEventListener("DOMContentLoaded", function () {
   console.log("Página de cadastro inicializada");
   setupEventListeners();
 
-  // Focar no email ao carregar
-  if (emailEl) {
-    setTimeout(() => emailEl.focus(), 100);
-  }
+  if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
