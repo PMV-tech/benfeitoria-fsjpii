@@ -1,8 +1,11 @@
 // cad.js
 const supa = window.supa;
 
-// ===== CONFIG =====
-const EMAIL_REDIRECT_TO = "https://pmv-tech.github.io/benfeitoria-fsjpii/index.html"; // AJUSTE
+// ===== URL BASE DO SEU GITHUB PAGES (COM A SUBPASTA DO REPO) =====
+const BASE_URL = "https://pmv-tech.github.io/benfeitoria-fsjpii";
+
+// Redirect certo para confirmação de email (signup)
+const EMAIL_REDIRECT_TO = `${BASE_URL}/index.html`;
 
 // Elementos do DOM
 const emailEl = document.getElementById("cadEmail");
@@ -130,18 +133,6 @@ function validateName() {
   }
 }
 
-// ===== RPC: checa se nome está disponível =====
-async function isFullNameAvailable(full_name) {
-  const { data, error } = await supa.rpc("is_full_name_available", {
-    p_full_name: full_name,
-  });
-
-  if (error) throw error;
-
-  // data é boolean
-  return data === true;
-}
-
 // Função de cadastro
 async function cadastrar() {
   const email = emailEl.value.trim();
@@ -189,40 +180,43 @@ async function cadastrar() {
   btn.setAttribute("aria-label", "Cadastrando...");
 
   try {
-const { data: emailOk, error: emailErr } = await supa.rpc("is_email_available", { p_email: email });
+    // 1) valida EMAIL no banco
+    const { data: emailOk, error: emailErr } = await supa.rpc("is_email_available", { p_email: email });
 
-if (emailErr) {
-  console.error("Erro RPC is_email_available:", emailErr);
-  alert("Erro ao validar email no banco.");
-  return;
-}
+    if (emailErr) {
+      console.error("Erro RPC is_email_available:", emailErr);
+      alert("Erro ao validar email no banco.");
+      return;
+    }
 
-if (emailOk !== true) {
-  emailEl.classList.remove("input-success");
-  emailEl.classList.add("input-error");
-  alert("Esse endereço de e-mail já está cadastrado.");
-  return;
-}
+    if (emailOk !== true) {
+      emailEl.classList.remove("input-success");
+      emailEl.classList.add("input-error");
+      alert("Esse endereço de e-mail já está cadastrado.");
+      return;
+    }
 
-// 2) valida NOME no banco (profiles.full_name)
-const { data: nameOk, error: nameErr } = await supa.rpc("is_full_name_available", { p_full_name: full_name });
+    // 2) valida NOME no banco
+    const { data: nameOk, error: nameErr } = await supa.rpc("is_full_name_available", {
+      p_full_name: full_name,
+    });
 
-if (nameErr) {
-  console.error("Erro RPC is_full_name_available:", nameErr);
-  alert("Erro ao validar nome de usuário no banco.");
-  return;
-}
+    if (nameErr) {
+      console.error("Erro RPC is_full_name_available:", nameErr);
+      alert("Erro ao validar nome de usuário no banco.");
+      return;
+    }
 
-if (nameOk !== true) {
-  nameEl.classList.remove("input-success");
-  nameEl.classList.add("input-error");
-  alert("Esse nome de usuário já existe. Escolha outro.");
-  return;
-}
+    if (nameOk !== true) {
+      nameEl.classList.remove("input-success");
+      nameEl.classList.add("input-error");
+      alert("Esse nome de usuário já existe. Escolha outro.");
+      return;
+    }
 
-    
+    // ===== signup =====
+    console.log("emailRedirectTo (SIGNUP):", EMAIL_REDIRECT_TO);
 
-    // ===== 2) signup (email duplicado pode retornar OK por design) =====
     const { data, error } = await supa.auth.signUp({
       email,
       password,
@@ -240,23 +234,20 @@ if (nameOk !== true) {
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    // Se exigir confirmação por email (normal em produção)
+    // Se exigir confirmação por email
     if (!data.session) {
       alert(
         "Cadastro iniciado! Agora confirme seu email e depois faça login.\n\n" +
-        "Obs: se esse email já existir, o Supabase pode mostrar essa mesma mensagem por segurança."
+          "Obs: se esse email já existir, o Supabase pode mostrar essa mesma mensagem por segurança."
       );
       window.location.href = "index.html";
       return;
     }
 
-    // Se logou direto (sem confirmação), pode atualizar profile se quiser
+    // Se logou direto (sem confirmação)
     const userId = data.user?.id || data.session.user.id;
 
-    const { error: upErr } = await supa
-      .from("profiles")
-      .update({ full_name })
-      .eq("id", userId);
+    const { error: upErr } = await supa.from("profiles").update({ full_name }).eq("id", userId);
 
     if (upErr) console.warn("Não consegui atualizar profiles:", upErr);
 
@@ -301,7 +292,3 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
-
-
-
-
