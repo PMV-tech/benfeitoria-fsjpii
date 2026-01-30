@@ -225,7 +225,7 @@ async function cadastrar() {
     return;
   }
 
-    }
+    
 
     // ===== 2) signup (email duplicado pode retornar OK por design) =====
     const { data, error } = await supa.auth.signUp({
@@ -306,4 +306,5 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
+
 
