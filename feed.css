@@ -1,4 +1,3 @@
-/* VARIÁVEIS DE TEMA */
 :root {
   /* Tema Escuro (Padrão) */
   --bg-primary: #0a0a0a;
@@ -19,6 +18,9 @@
   --success-color: rgba(80, 200, 120, 0.9);
   --danger-color: rgba(255, 80, 120, 0.9);
   --info-color: rgba(100, 150, 255, 0.9);
+
+  /* ✅ Altura única da topbar (bata com o layout) */
+  --topbar-h: 62px;
 }
 
 [data-theme="light"] {
@@ -63,16 +65,16 @@ body {
 
 /* Fundo gradiente para tema escuro */
 [data-theme="dark"] body {
-  background: 
-    radial-gradient(ellipse at 20% 20%, 
+  background:
+    radial-gradient(ellipse at 20% 20%,
       rgba(128, 0, 32, 0.35) 0%,
       transparent 40%
     ),
-    radial-gradient(ellipse at 80% 80%, 
+    radial-gradient(ellipse at 80% 80%,
       rgba(0, 71, 171, 0.35) 0%,
       transparent 40%
     ),
-    radial-gradient(ellipse at 50% 50%, 
+    radial-gradient(ellipse at 50% 50%,
       rgba(212, 175, 55, 0.25) 0%,
       transparent 50%
     ),
@@ -82,16 +84,16 @@ body {
 
 /* Fundo gradiente para tema claro - com bolinhas */
 [data-theme="light"] body {
-  background: 
-    radial-gradient(ellipse at 20% 20%, 
+  background:
+    radial-gradient(ellipse at 20% 20%,
       rgba(128, 0, 32, 0.08) 20%,
       transparent 80%
     ),
-    radial-gradient(ellipse at 80% 80%, 
+    radial-gradient(ellipse at 80% 80%,
       rgba(0, 71, 171, 0.08) 20%,
       transparent 80%
     ),
-    radial-gradient(ellipse at 50% 50%, 
+    radial-gradient(ellipse at 50% 50%,
       rgba(212, 175, 55, 0.06) 20%,
       transparent 80%
     ),
@@ -122,36 +124,36 @@ body {
 
 /* CORES PARA TEMA ESCURO - FORTES */
 [data-theme="dark"] .particle-wine {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(180, 0, 45, 0.85),
     rgba(128, 0, 32, 0.7),
     transparent 65%
   );
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(180, 0, 45, 0.6),
     0 0 35px rgba(128, 0, 32, 0.3),
     inset 0 0 12px rgba(220, 80, 110, 0.3);
 }
 
 [data-theme="dark"] .particle-blue {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(0, 100, 220, 0.85),
     rgba(0, 71, 171, 0.7),
     transparent 65%
   );
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(0, 100, 220, 0.6),
     0 0 35px rgba(0, 71, 171, 0.3),
     inset 0 0 12px rgba(100, 180, 255, 0.3);
 }
 
 [data-theme="dark"] .particle-gold {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(240, 200, 70, 0.85),
     rgba(212, 175, 55, 0.7),
     transparent 65%
   );
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(240, 200, 70, 0.6),
     0 0 35px rgba(212, 175, 55, 0.3),
     inset 0 0 12px rgba(255, 235, 170, 0.3);
@@ -159,47 +161,72 @@ body {
 
 /* CORES PARA TEMA CLARO - SUAVES */
 [data-theme="light"] .particle-wine {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(200, 50, 100, 0.4),
     rgba(180, 40, 90, 0.3),
     transparent 70%
   );
-  box-shadow: 
+  box-shadow:
     0 0 15px rgba(200, 50, 100, 0.25),
     0 0 25px rgba(180, 40, 90, 0.15),
     inset 0 0 8px rgba(230, 120, 150, 0.2);
 }
 
 [data-theme="light"] .particle-blue {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(50, 120, 230, 0.4),
     rgba(40, 100, 210, 0.3),
     transparent 70%
   );
-  box-shadow: 
+  box-shadow:
     0 0 15px rgba(50, 120, 230, 0.25),
     0 0 25px rgba(40, 100, 210, 0.15),
     inset 0 0 8px rgba(120, 180, 240, 0.2);
 }
 
 [data-theme="light"] .particle-gold {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 30% 30%,
     rgba(220, 180, 60, 0.4),
     rgba(200, 160, 50, 0.3),
     transparent 70%
   );
-  box-shadow: 
+  box-shadow:
     0 0 15px rgba(220, 180, 60, 0.25),
     0 0 25px rgba(200, 160, 50, 0.15),
     inset 0 0 8px rgba(240, 220, 140, 0.2);
 }
 
-/* ===================== TOPBAR ===================== */
-:root { --topbar-h: 64px; } /* ou 62px pra bater com seu layout */
+/* ===================== (MANTIDO) Logo e botões ===================== */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
 
-.topbar{
+.header-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* ===================== TOPBAR + SCROLL (VERSÃO CORRETA E ÚNICA) ===================== */
+/* ✅ Aqui é onde estava o conflito/duplicação antes.
+   ✅ Agora é UMA definição só (sem briga com outras regras).
+*/
+
+/* trava scroll do navegador */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* topbar fixa e título REALMENTE centralizado */
+.topbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: var(--topbar-h);
   z-index: 1000;
 
@@ -208,45 +235,76 @@ body {
   border-bottom: 1px solid var(--border-color);
 
   display: grid;
-  grid-template-columns: 1fr auto 1fr; /* <-- AQUI é o segredo */
+  grid-template-columns: 1fr auto 1fr; /* lados iguais => centro exato */
   align-items: center;
   padding: 0 14px;
 }
 
 /* esquerda */
-.logo-container{
+.logo-container {
   justify-self: start;
-  display: flex;
-  align-items: center;
 }
 
 /* centro */
-.topbar h2{
-  grid-column: 2;
-  justify-self: center;
+.topbar h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
   text-align: center;
+  justify-self: center;
+  text-shadow: 0 2px 10px var(--shadow-color);
+  margin: 0;
 }
 
 /* direita */
-.header-actions{
-  grid-column: 3;
+.header-actions {
   justify-self: end;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
+/* scroll manual abaixo da topbar */
+.app-scroll {
+  position: fixed;
+  top: var(--topbar-h);
+  left: 0;
+  right: 0;
+  height: calc(100vh - var(--topbar-h));
+  overflow-y: auto;
+  overflow-x: hidden;
 
-/* Container dos botões à direita */
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-end;
-  grid-column: 3;
+  /* mantém espaço da barra consistente sem empurrar o layout */
+  scrollbar-gutter: stable both-edges;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #c9a23a rgba(255,255,255,0.08);
 }
 
-/* Botão Tema */
+/* Chrome/Edge/Opera/Safari */
+.app-scroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.app-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  margin: 10px 0;
+}
+
+.app-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #d8b14a, #a67c00);
+  border-radius: 999px;
+  border: 3px solid rgba(0,0,0,0.25);
+}
+
+.app-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #e6c15a, #b88900);
+}
+
+/* ===================== BOTÕES DO HEADER ===================== */
 .btn-theme {
   width: 40px;
   height: 40px;
@@ -271,8 +329,7 @@ body {
   transition: transform 0.3s ease;
 }
 
-/* Botão sair */
-.btn-logout{
+.btn-logout {
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
@@ -284,31 +341,31 @@ body {
   white-space: nowrap;
 }
 
-.btn-logout:hover{
+.btn-logout:hover {
   background: var(--button-hover);
   transform: translateY(-2px);
 }
 
 /* ===================== LAYOUT ===================== */
-main{
+main {
   max-width: 520px;
   margin: 18px auto 120px;
   padding: 0 14px;
 }
 
 /* ===================== POST CARD ===================== */
-.post{
+.post {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   overflow: hidden;
   margin-bottom: 20px;
-  
+
   box-shadow:
     0 20px 50px var(--shadow-color),
     0 0 0 1px var(--border-light),
     inset 0 0 1px var(--border-light);
-  
+
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
@@ -377,7 +434,6 @@ main{
   position: absolute;
   font-size: 60px;
   opacity: 0;
-  transform: scale(0);
   transition: all 0.5s ease;
   pointer-events: none;
   z-index: 10;
@@ -387,7 +443,7 @@ main{
 }
 
 /* área da legenda */
-.post p{
+.post p {
   padding: 14px 16px 16px;
   color: var(--text-secondary);
   line-height: 1.5;
@@ -397,7 +453,7 @@ main{
 }
 
 /* ===================== AÇÕES (like/coment) ===================== */
-.post-actions{
+.post-actions {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -405,7 +461,7 @@ main{
   border-top: 1px solid var(--border-light);
 }
 
-.post-actions button{
+.post-actions button {
   background: none;
   border: none;
   font-size: 24px;
@@ -417,41 +473,41 @@ main{
   border-radius: 8px;
 }
 
-.post-actions button:hover{
+.post-actions button:hover {
   transform: translateY(-2px) scale(1.1);
   opacity: 1;
   background: var(--button-bg);
 }
 
-.like-btn.liked{
+.like-btn.liked {
   color: #ff3b5c;
 }
 
 /* contadores */
 .likes,
-.comments-count{
+.comments-count {
   font-size: 13px;
   color: var(--text-muted);
   font-weight: 500;
 }
 
-.likes{
+.likes {
   margin-left: auto;
 }
 
 /* ===================== ÁREA DE COMENTÁRIOS ===================== */
-.comments{
+.comments {
   padding: 0 16px 16px;
   border-top: 1px solid var(--border-light);
 }
 
-.comment-row{
+.comment-row {
   display: flex;
   gap: 10px;
   margin-top: 10px;
 }
 
-.comments input{
+.comments input {
   flex: 1;
   width: 100%;
   padding: 12px 14px;
@@ -464,13 +520,13 @@ main{
   transition: all 0.2s ease;
 }
 
-.comments input:focus{
+.comments input:focus {
   box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.4);
   border-color: var(--border-color);
   background: var(--input-bg);
 }
 
-.comment-send{
+.comment-send {
   padding: 12px 16px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
@@ -482,13 +538,13 @@ main{
   font-size: 14px;
 }
 
-.comment-send:hover{
+.comment-send:hover {
   background: var(--button-hover);
   transform: translateY(-1px);
 }
 
 /* lista de comentários */
-.comments ul{
+.comments ul {
   margin-top: 14px;
   list-style: none;
   display: flex;
@@ -496,7 +552,7 @@ main{
   gap: 10px;
 }
 
-.comments li{
+.comments li {
   background: var(--comment-bg);
   border: 1px solid var(--border-light);
   border-radius: 14px;
@@ -512,7 +568,7 @@ main{
   border-color: var(--border-color);
 }
 
-.comment-meta{
+.comment-meta {
   display: flex;
   gap: 8px;
   align-items: center;
@@ -521,7 +577,7 @@ main{
   color: var(--text-muted);
 }
 
-.comment-author{
+.comment-author {
   color: var(--text-primary);
   font-weight: 700;
 }
@@ -576,17 +632,9 @@ main{
   transform: translateY(-1px);
 }
 
-.comment-action-btn.edit {
-  border-color: var(--info-color);
-}
-
-.comment-action-btn.reply {
-  border-color: var(--success-color);
-}
-
-.comment-action-btn.delete {
-  border-color: var(--danger-color);
-}
+.comment-action-btn.edit { border-color: var(--info-color); }
+.comment-action-btn.reply { border-color: var(--success-color); }
+.comment-action-btn.delete { border-color: var(--danger-color); }
 
 .reply-indicator {
   font-size: 11px;
@@ -604,13 +652,13 @@ main{
 }
 
 /* ===================== AÇÕES ADMIN (ex: apagar post) ===================== */
-.post-admin{
+.post-admin {
   display: flex;
   gap: 10px;
   padding: 0 16px 16px;
 }
 
-.btn-danger{
+.btn-danger {
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid rgba(255, 59, 92, 0.4);
@@ -622,14 +670,14 @@ main{
   transition: all 0.2s ease;
 }
 
-.btn-danger:hover{
+.btn-danger:hover {
   background: rgba(255, 59, 92, 0.22);
   transform: translateY(-1px);
   border-color: rgba(255, 59, 92, 0.5);
 }
 
 /* ===================== BOTÃO + (DESCENTRALIZADO) ===================== */
-.add-post{
+.add-post {
   position: fixed;
   bottom: 22px;
   right: 22px;
@@ -661,14 +709,12 @@ main{
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-48%, -55%); /* Descentralizado */
+  transform: translate(-48%, -55%);
 }
 
-.add-post:hover{
-  transform: scale(1.06);
-}
+.add-post:hover { transform: scale(1.06); }
 
-.add-post::after{
+.add-post::after {
   content: "";
   position: absolute;
   inset: -6px;
@@ -680,7 +726,7 @@ main{
 }
 
 /* ===================== MODAL ===================== */
-.modal{
+.modal {
   position: fixed;
   inset: 0;
   display: none;
@@ -692,31 +738,29 @@ main{
   z-index: 1000;
 }
 
-.modal.show{
-  display: flex;
-}
+.modal.show { display: flex; }
 
-.modal-card{
+.modal-card {
   width: 100%;
   max-width: 460px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 20px;
   padding: 20px;
-  box-shadow: 
+  box-shadow:
     0 30px 80px var(--shadow-color),
     0 0 0 1px var(--border-light);
   position: relative;
 }
 
-.modal-card h3{
+.modal-card h3 {
   font-size: 20px;
   margin-bottom: 16px;
   color: var(--text-primary);
   text-align: center;
 }
 
-.modal-close{
+.modal-close {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -731,12 +775,12 @@ main{
   transition: all 0.2s ease;
 }
 
-.modal-close:hover{
+.modal-close:hover {
   background: var(--button-hover);
   border-color: var(--border-color);
 }
 
-.modal-preview{
+.modal-preview {
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
@@ -745,14 +789,14 @@ main{
   margin-bottom: 16px;
 }
 
-.modal-preview img{
+.modal-preview img {
   width: 100%;
   display: block;
   max-height: 360px;
   object-fit: cover;
 }
 
-.modal-card label{
+.modal-card label {
   display: block;
   font-size: 13px;
   color: var(--text-muted);
@@ -760,7 +804,7 @@ main{
   font-weight: 500;
 }
 
-.modal-card textarea{
+.modal-card textarea {
   width: 100%;
   resize: none;
   padding: 14px 16px;
@@ -774,19 +818,19 @@ main{
   transition: all 0.2s ease;
 }
 
-.modal-card textarea:focus{
+.modal-card textarea:focus {
   box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.4);
   border-color: var(--border-color);
   background: var(--input-bg);
 }
 
-.modal-actions{
+.modal-actions {
   display: flex;
   gap: 12px;
   margin-top: 20px;
 }
 
-.btn{
+.btn {
   flex: 1;
   padding: 14px;
   border-radius: 14px;
@@ -797,24 +841,24 @@ main{
   transition: all 0.2s ease;
 }
 
-.btn.primary{
+.btn.primary {
   color: white;
   background: var(--accent-gradient);
   box-shadow: 0 4px 20px rgba(138, 43, 226, 0.3);
 }
 
-.btn.primary:hover{
+.btn.primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 25px rgba(138, 43, 226, 0.4);
 }
 
-.btn.secondary{
+.btn.secondary {
   color: var(--text-primary);
   background: var(--button-bg);
   border: 1px solid var(--border-color);
 }
 
-.btn.secondary:hover{
+.btn.secondary:hover {
   background: var(--button-hover);
   transform: translateY(-2px);
   border-color: var(--border-color);
@@ -858,9 +902,7 @@ main{
 }
 
 /* ===================== ESPAÇO ENTRE DATA E IMAGEM ===================== */
-.post-header + .post-image-container {
-  margin-top: 12px;
-}
+.post-header + .post-image-container { margin-top: 12px; }
 
 /* ===================== MODAL DE QUEM CURTIU ===================== */
 .likes-list {
@@ -885,9 +927,7 @@ main{
   transform: translateX(2px);
 }
 
-.like-user:last-child {
-  border-bottom: none;
-}
+.like-user:last-child { border-bottom: none; }
 
 .like-user-avatar {
   width: 40px;
@@ -938,151 +978,75 @@ main{
 }
 
 /* Scrollbar customizada para a lista de curtidas */
-.likes-list::-webkit-scrollbar {
-  width: 6px;
-}
-
+.likes-list::-webkit-scrollbar { width: 6px; }
 .likes-list::-webkit-scrollbar-track {
   background: var(--border-light);
   border-radius: 10px;
 }
-
 .likes-list::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 10px;
 }
-
-.likes-list::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
-
-/* Evita o body virar o "scroll" e mantém layout estável */
-html, body {
-  height: 100%;
-  overflow: hidden; /* trava scroll do navegador */
-}
-
-/* Seu scroll "manual" do site */
-.app-scroll {
-  height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  /* mantém espaço da barra consistente sem empurrar o layout */
-  scrollbar-gutter: stable both-edges;
-
-  /* Firefox */
-  scrollbar-width: thin;
-  scrollbar-color: #c9a23a rgba(255,255,255,0.08);
-}
-
-/* Chrome/Edge/Opera/Safari */
-.app-scroll::-webkit-scrollbar {
-  width: 12px;
-}
-
-.app-scroll::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.06);
-  border-radius: 999px;
-  margin: 10px 0; /* dá respiro no topo/baixo */
-}
-
-.app-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #d8b14a, #a67c00);
-  border-radius: 999px;
-  border: 3px solid rgba(0,0,0,0.25); /* cria “outline” bonito */
-}
-
-.app-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #e6c15a, #b88900);
-}
-:root { --topbar-h: 64px; } /* ajuste pra altura real */
-
-html, body { height: 100%; overflow: hidden; }
-
-.topbar{
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--topbar-h);
-  z-index: 1000;
-}
-
-.app-scroll{
-  position: fixed;
-  top: var(--topbar-h);
-  left: 0; right: 0;
-  height: calc(100vh - var(--topbar-h));
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  scrollbar-gutter: stable both-edges;
-}
-
-
+.likes-list::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* ===================== RESPONSIVO ===================== */
-@media (max-width: 768px){
+@media (max-width: 768px) {
   [data-theme="dark"] body {
-    background: 
-      radial-gradient(ellipse at 20% 20%, 
+    background:
+      radial-gradient(ellipse at 20% 20%,
         rgba(128, 0, 32, 0.4) 0%,
         transparent 40%
       ),
-      radial-gradient(ellipse at 80% 80%, 
+      radial-gradient(ellipse at 80% 80%,
         rgba(0, 71, 171, 0.4) 0%,
         transparent 40%
       ),
       var(--bg-primary);
   }
-  
+
   [data-theme="light"] body {
-    background: 
-      radial-gradient(ellipse at 20% 20%, 
+    background:
+      radial-gradient(ellipse at 20% 20%,
         rgba(128, 0, 32, 0.06) 0%,
         transparent 70%
       ),
-      radial-gradient(ellipse at 80% 80%, 
+      radial-gradient(ellipse at 80% 80%,
         rgba(0, 71, 171, 0.06) 0%,
         transparent 70%
       ),
       linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
   }
-  
-  .topbar{ 
-    height: 60px; 
+
+  /* ✅ no mobile, só reduz altura e paddings — NÃO muda a grid */
+  :root { --topbar-h: 60px; }
+
+  .topbar {
     padding: 0 12px;
-    grid-template-columns: auto 1fr auto;
   }
-  
-  .header-logo {
-    height: 32px;
-  }
-  
-  .topbar h2{ 
-    font-size: 16px; 
-  }
-  
-  .header-actions {
-    gap: 8px;
-  }
-  
+
+  .header-logo { height: 32px; }
+
+  .topbar h2 { font-size: 16px; }
+
+  .header-actions { gap: 8px; }
+
   .btn-theme {
     width: 36px;
     height: 36px;
   }
-  
+
   .btn-logout {
     padding: 8px 12px;
     font-size: 14px;
   }
 
-  main{
+  main {
     max-width: 100%;
     margin: 16px auto 110px;
     padding: 0 12px;
   }
 
-  .add-post{
+  .add-post {
     width: 56px;
     height: 56px;
     bottom: 18px;
@@ -1094,98 +1058,65 @@ html, body { height: 100%; overflow: hidden; }
     transform: translate(-48%, -55%);
   }
 
-  .add-post::after{
+  .add-post::after {
     inset: -5px;
     filter: blur(14px);
   }
 
-  .post p{ 
-    font-size: 14.5px; 
+  .post p {
+    font-size: 14.5px;
     padding: 12px 14px 14px;
   }
-  
-  .post-actions {
-    padding: 10px 14px;
-  }
-  
-  .comments {
-    padding: 0 14px 14px;
-  }
-  
+
+  .post-actions { padding: 10px 14px; }
+
+  .comments { padding: 0 14px 14px; }
+
   .fullscreen-image {
     max-width: 95vw;
     max-height: 85vh;
   }
-  
-  .heart-animation {
-    font-size: 50px;
-  }
-  
-  /* Modal de curtidas responsivo */
+
+  .heart-animation { font-size: 50px; }
+
   .like-user {
     padding: 10px 14px;
     gap: 10px;
   }
-  
+
   .like-user-avatar {
     width: 36px;
     height: 36px;
     font-size: 14px;
   }
-  
-  .likes-list {
-    max-height: 350px;
-  }
+
+  .likes-list { max-height: 350px; }
+
+  /* opcional: esconder scrollbar no mobile */
+  .app-scroll::-webkit-scrollbar { width: 0px; }
+  .app-scroll { scrollbar-width: none; }
 }
 
 @media (max-width: 480px) {
-  .topbar h2 {
-    font-size: 14px;
-  }
-  
-  .logo-container {
-    gap: 6px;
-  }
-  
-  .header-logo {
-    height: 28px;
-  }
-  
+  .topbar h2 { font-size: 14px; }
+
+  .logo-container { gap: 6px; }
+
+  .header-logo { height: 28px; }
+
   .comment-action-btn {
     width: 26px;
     height: 26px;
   }
-  
-  .image-overlay {
-    font-size: 12px;
-  }
-  
-  .post-actions button {
-    font-size: 22px;
-  }
-  
+
+  .image-overlay { font-size: 12px; }
+
+  .post-actions button { font-size: 22px; }
+
   .likes,
-  .comments-count {
-    font-size: 12px;
-  }
-  
-  /* Modal de curtidas responsivo */
-  .like-user-name {
-    font-size: 13px;
-  }
-  
-  .like-user-date {
-    font-size: 10px;
-  }
+  .comments-count { font-size: 12px; }
+
+  .like-user-name { font-size: 13px; }
+
+  .like-user-date { font-size: 10px; }
 }
-
-@media (max-width: 768px) {
-  .app-scroll::-webkit-scrollbar {
-    width: 0px;
-  }
-  .app-scroll {
-    scrollbar-width: none; /* Firefox */
-  }
-}
-
-
