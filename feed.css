@@ -1137,3 +1137,12 @@ main{
   color: #fff;
   text-decoration: underline;
 }
+
+
+
+
+
+.caption-text.collapsed {
+  max-height: 42px; /* mostra um pouco da legenda */
+  overflow: hidden;
+}
