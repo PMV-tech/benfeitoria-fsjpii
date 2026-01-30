@@ -1531,3 +1531,22 @@ observer.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ['data-theme']
 });
+
+
+
+
+
+
+
+
+
+
+<div class="post-caption">
+  <p class="caption-text collapsed">${legenda}</p>
+  ${
+    legenda
+      ? `<button class="toggle-caption" type="button">Ver legenda</button>`
+      : ""
+  }
+</div>
+
