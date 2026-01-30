@@ -1114,3 +1114,26 @@ main{
     font-size: 10px;
   }
 }
+
+
+
+
+
+
+
+
+.toggle-caption {
+  display: inline-block;
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggle-caption:hover {
+  color: #fff;
+  text-decoration: underline;
+}
