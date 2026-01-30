@@ -189,42 +189,6 @@ async function cadastrar() {
   btn.setAttribute("aria-label", "Cadastrando...");
 
   try {
-      // ============================
-  // VALIDAÇÃO NO BANCO (EMAIL + NOME)
-  // ============================
-
-  // 1) valida EMAIL no banco (profiles.email)
-  const emailCheck = await supa.rpc("is_email_available", { p_email: email });
-
-  if (emailCheck.error) {
-    console.error("Erro RPC is_email_available:", emailCheck.error);
-    alert("Erro ao validar email no banco.");
-    return;
-  }
-
-  if (emailCheck.data !== true) {
-    emailEl.classList.remove("input-success");
-    emailEl.classList.add("input-error");
-    alert("Este email já está cadastrado.");
-    return;
-  }
-
-  // 2) valida NOME no banco (profiles.full_name)
-  const nameCheck = await supa.rpc("is_full_name_available", { p_full_name: full_name });
-
-  if (nameCheck.error) {
-    console.error("Erro RPC is_full_name_available:", nameCheck.error);
-    alert("Erro ao validar nome de usuário no banco.");
-    return;
-  }
-
-  if (nameCheck.data !== true) {
-    nameEl.classList.remove("input-success");
-    nameEl.classList.add("input-error");
-    alert("Esse nome de usuário já existe. Escolha outro.");
-    return;
-  }
-
 const { data: emailOk, error: emailErr } = await supa.rpc("is_email_available", { p_email: email });
 
 if (emailErr) {
@@ -237,6 +201,22 @@ if (emailOk !== true) {
   emailEl.classList.remove("input-success");
   emailEl.classList.add("input-error");
   alert("Esse endereço de e-mail já está cadastrado.");
+  return;
+}
+
+// 2) valida NOME no banco (profiles.full_name)
+const { data: nameOk, error: nameErr } = await supa.rpc("is_full_name_available", { p_full_name: full_name });
+
+if (nameErr) {
+  console.error("Erro RPC is_full_name_available:", nameErr);
+  alert("Erro ao validar nome de usuário no banco.");
+  return;
+}
+
+if (nameOk !== true) {
+  nameEl.classList.remove("input-success");
+  nameEl.classList.add("input-error");
+  alert("Esse nome de usuário já existe. Escolha outro.");
   return;
 }
 
@@ -321,6 +301,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
+
 
 
 
