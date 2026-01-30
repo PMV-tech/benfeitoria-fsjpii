@@ -1541,32 +1541,4 @@ observer.observe(document.documentElement, {
 
 
 
-<div class="post-caption">
-  <p class="caption-text collapsed">${legenda}</p>
-  ${
-    legenda
-      ? `<button class="toggle-caption" type="button">Ver legenda</button>`
-      : ""
-  }
-</div>
-
-
-
-
-
-
-
-document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("toggle-caption")) {
-    const btn = e.target;
-    const caption = btn.previousElementSibling;
-
-    caption.classList.toggle("collapsed");
-
-    btn.textContent = caption.classList.contains("collapsed")
-      ? "Ver legenda"
-      : "Ocultar legenda";
-  }
-});
-
 
