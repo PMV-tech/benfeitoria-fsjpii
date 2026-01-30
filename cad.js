@@ -225,6 +225,21 @@ async function cadastrar() {
     return;
   }
 
+const { data: emailOk, error: emailErr } = await supa.rpc("is_email_available", { p_email: email });
+
+if (emailErr) {
+  console.error("Erro RPC is_email_available:", emailErr);
+  alert("Erro ao validar email no banco.");
+  return;
+}
+
+if (emailOk !== true) {
+  emailEl.classList.remove("input-success");
+  emailEl.classList.add("input-error");
+  alert("Esse endereço de e-mail já está cadastrado.");
+  return;
+}
+
     
 
     // ===== 2) signup (email duplicado pode retornar OK por design) =====
@@ -306,5 +321,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
+
 
 
