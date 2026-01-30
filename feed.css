@@ -1118,31 +1118,3 @@ main{
 
 
 
-
-
-
-
-.toggle-caption {
-  display: inline-block;
-  margin-top: 6px;
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
-.toggle-caption:hover {
-  color: #fff;
-  text-decoration: underline;
-}
-
-
-
-
-
-.caption-text.collapsed {
-  max-height: 42px; /* mostra um pouco da legenda */
-  overflow: hidden;
-}
