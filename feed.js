@@ -1550,3 +1550,23 @@ observer.observe(document.documentElement, {
   }
 </div>
 
+
+
+
+
+
+
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("toggle-caption")) {
+    const btn = e.target;
+    const caption = btn.previousElementSibling;
+
+    caption.classList.toggle("collapsed");
+
+    btn.textContent = caption.classList.contains("collapsed")
+      ? "Ver legenda"
+      : "Ocultar legenda";
+  }
+});
+
+
