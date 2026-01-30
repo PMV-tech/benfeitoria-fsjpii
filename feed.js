@@ -273,8 +273,10 @@ async function abrirModalCurtidas(postId, postEl = null) {
           .slice(0, 2);
       } else {
         // Se não tem nome, mostra ID ou "Usuário"
-        userName = `Usuário ${like.user_id?.substring(0, 4) || ''}`;
+        
+        userName = "Usuário";
         initials = "U";
+
       }
       
       // Adicionar indicador "Você" se for o usuário atual
@@ -1531,6 +1533,7 @@ observer.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ['data-theme']
 });
+
 
 
 
