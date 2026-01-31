@@ -1,4 +1,4 @@
-// feed.js - POST COM OU SEM IMAGEM (CORRIGIDO) + ESCONDE PRÉVIA QUANDO SEM IMAGEM
+// feed.js - POST COM OU SEM IMAGEM + FIX JOIN AMBIGUO (PGRST201)
 const supa = window.supa || window.supabaseClient;
 
 if (!supa) {
@@ -14,7 +14,6 @@ const topbarTitle = document.querySelector(".topbar h2");
 
 // Botões
 const btnLogout = document.getElementById("btnLogout");
-const btnTheme = document.getElementById("btnTheme");
 
 // Modal de novo post
 const postModal = document.getElementById("postModal");
@@ -187,7 +186,6 @@ function setPreviewVisible(visible) {
 function openPostTypeChooser() {
   if (!currentProfile || currentProfile.role !== "admin") return;
 
-  // modal simples criado via JS (não precisa mexer no HTML)
   const overlay = document.createElement("div");
   overlay.style.position = "fixed";
   overlay.style.inset = "0";
@@ -280,7 +278,7 @@ function openPostTypeChooser() {
   btnImg.addEventListener("click", () => {
     postMode = "image";
     pendingFile = null;
-    setPreviewVisible(true); // vai aparecer quando escolher arquivo
+    setPreviewVisible(true);
     document.body.removeChild(overlay);
     fileInput?.click();
   });
@@ -310,8 +308,8 @@ function openPostTypeChooser() {
   document.body.appendChild(overlay);
 }
 
-// ----------------- Função para abrir modal com quem curtiu -----------------
-async function abrirModalCurtidas(postId, postEl = null) {
+// ----------------- Curtidas modal -----------------
+async function abrirModalCurtidas(postId) {
   likesList.innerHTML = `
     <div class="likes-empty">
       <i class="fas fa-spinner fa-spin"></i>
@@ -325,15 +323,7 @@ async function abrirModalCurtidas(postId, postEl = null) {
   try {
     const { data: likes, error } = await supa
       .from("likes")
-      .select(
-        `
-        created_at,
-        user_id,
-        profiles:profiles (
-          full_name
-        )
-      `
-      )
+      .select(`created_at, user_id, profiles:profiles(full_name)`)
       .eq("post_id", postId)
       .order("created_at", { ascending: false });
 
@@ -367,7 +357,7 @@ async function abrirModalCurtidas(postId, postEl = null) {
       let initials = "U";
       const isCurrentUser = like.user_id === currentUser?.id;
 
-      if (like.profiles && like.profiles.full_name) {
+      if (like.profiles?.full_name) {
         userName = like.profiles.full_name;
         initials = userName
           .split(" ")
@@ -462,7 +452,6 @@ async function init() {
   currentProfile = profile;
   setTopbarTitle();
 
-  // somente admin posta
   if (currentProfile.role !== "admin") {
     if (addPostBtn) addPostBtn.style.display = "none";
   } else {
@@ -475,49 +464,90 @@ async function init() {
 
 init();
 
-// ----------------- Feed (SEM v_feed) -----------------
+// ----------------- Feed (SEM embed de profiles pra evitar PGRST201) -----------------
 async function carregarFeed() {
   feed.innerHTML = "";
 
-  // Busca posts direto + autor + counts
-  const { data, error } = await supa
+  // 1) Pega posts sem embed de profiles (evita ambiguidade)
+  const { data: posts, error: postsErr } = await supa
     .from("posts")
-    .select(
-      `
-      id,
-      user_id,
-      caption,
-      image_url,
-      created_at,
-      profiles:profiles(full_name),
-      likes:likes(count),
-      comments:comments(count)
-    `
-    )
+    .select("id, user_id, caption, image_url, created_at")
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) {
-    console.error(error);
+  if (postsErr) {
+    console.error(postsErr);
     alert("Erro ao carregar feed.");
     return;
   }
 
-  const normalized = (data || []).map((p) => {
-    const likesCount = Number(p.likes?.[0]?.count ?? 0);
-    const commentsCount = Number(p.comments?.[0]?.count ?? 0);
+  const postList = posts || [];
 
-    return {
-      id: p.id,
-      user_id: p.user_id,
-      caption: p.caption,
-      image_url: p.image_url,
-      created_at: p.created_at,
-      author_name: p.profiles?.full_name || "Usuário",
-      likes_count: likesCount,
-      comments_count: commentsCount,
-    };
-  });
+  // 2) Pega nomes dos autores numa query separada
+  const authorIds = [...new Set(postList.map((p) => p.user_id).filter(Boolean))];
+
+  let profileMap = new Map();
+  if (authorIds.length > 0) {
+    const { data: profs, error: profErr } = await supa
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", authorIds);
+
+    if (profErr) {
+      // não quebra o feed; só cai no "Usuário"
+      console.warn("Não consegui carregar profiles:", profErr);
+    } else {
+      (profs || []).forEach((p) => {
+        profileMap.set(p.id, p.full_name || "Usuário");
+      });
+    }
+  }
+
+  // 3) Pega contagens de likes/comments via queries agregadas (sem precisar view)
+  // Likes
+  const postIds = postList.map((p) => p.id);
+  const likesCountMap = new Map();
+  const commentsCountMap = new Map();
+
+  if (postIds.length > 0) {
+    const { data: likesAgg, error: likesErr } = await supa
+      .from("likes")
+      .select("post_id")
+      .in("post_id", postIds);
+
+    if (!likesErr) {
+      (likesAgg || []).forEach((r) => {
+        likesCountMap.set(r.post_id, (likesCountMap.get(r.post_id) || 0) + 1);
+      });
+    } else {
+      console.warn("Erro likes agg:", likesErr);
+    }
+
+    const { data: commentsAgg, error: commentsErr } = await supa
+      .from("comments")
+      .select("post_id")
+      .in("post_id", postIds);
+
+    if (!commentsErr) {
+      (commentsAgg || []).forEach((r) => {
+        commentsCountMap.set(r.post_id, (commentsCountMap.get(r.post_id) || 0) + 1);
+      });
+    } else {
+      console.warn("Erro comments agg:", commentsErr);
+    }
+  }
+
+  // 4) Monta e renderiza
+  const normalized = postList.map((p) => ({
+    id: p.id,
+    user_id: p.user_id,
+    caption: p.caption,
+    image_url: p.image_url,
+    created_at: p.created_at,
+    author_name: profileMap.get(p.user_id) || "Usuário",
+    likes_count: likesCountMap.get(p.id) || 0,
+    comments_count: commentsCountMap.get(p.id) || 0,
+  }));
 
   for (const post of normalized) {
     const card = await renderPost(post);
@@ -708,7 +738,7 @@ async function renderPost(post) {
       }
       if (clickTimer === null) {
         clickTimer = setTimeout(() => {
-          abrirImagemTelaCheia(imgUrl, imgContainer);
+          abrirImagemTelaCheia(imgUrl);
           clickTimer = null;
         }, 300);
       }
@@ -743,7 +773,6 @@ async function renderPost(post) {
 
     postEl.appendChild(imgContainer);
   } else {
-    // sem imagem: só dá um respiro visual (opcional)
     const noImgLine = document.createElement("div");
     noImgLine.style.height = "2px";
     noImgLine.style.margin = "6px 12px 10px";
@@ -767,15 +796,7 @@ async function renderPost(post) {
   const likesSpan = postEl.querySelector(".likes");
   likesSpan.addEventListener("click", async (e) => {
     e.stopPropagation();
-    await abrirModalCurtidas(post.id, postEl);
-  });
-  likesSpan.addEventListener("mouseenter", () => {
-    likesSpan.style.opacity = "0.8";
-    likesSpan.style.textDecoration = "underline";
-  });
-  likesSpan.addEventListener("mouseleave", () => {
-    likesSpan.style.opacity = "1";
-    likesSpan.style.textDecoration = "none";
+    await abrirModalCurtidas(post.id);
   });
 
   // Caption
@@ -811,58 +832,12 @@ async function renderPost(post) {
   sendBtn.style.background = "var(--button-bg)";
   sendBtn.style.color = "var(--text-primary)";
   sendBtn.style.cursor = "pointer";
-  sendBtn.style.transition = "background .15s ease, transform .15s ease";
-  sendBtn.addEventListener("mouseenter", () => {
-    sendBtn.style.background = "var(--button-hover)";
-    sendBtn.style.transform = "translateY(-1px)";
-  });
-  sendBtn.addEventListener("mouseleave", () => {
-    sendBtn.style.background = "var(--button-bg)";
-    sendBtn.style.transform = "translateY(0)";
-  });
 
   inputRow.appendChild(sendBtn);
 
   const ul = document.createElement("ul");
-
-  const seeMoreContainer = document.createElement("div");
-  seeMoreContainer.style.marginTop = "10px";
-  seeMoreContainer.style.display = "none";
-
-  const seeMoreBtn = document.createElement("button");
-  seeMoreBtn.type = "button";
-  seeMoreBtn.className = "see-more-comments";
-  seeMoreBtn.textContent = "Ver mais comentários";
-  seeMoreBtn.style.width = "100%";
-  seeMoreBtn.style.padding = "10px";
-  seeMoreBtn.style.borderRadius = "10px";
-  seeMoreBtn.style.border = "1px solid var(--border-color)";
-  seeMoreBtn.style.background = "var(--button-bg)";
-  seeMoreBtn.style.color = "var(--text-primary)";
-  seeMoreBtn.style.cursor = "pointer";
-  seeMoreBtn.style.fontSize = "14px";
-  seeMoreBtn.style.fontWeight = "600";
-  seeMoreBtn.style.transition = "all 0.2s ease";
-
-  seeMoreBtn.addEventListener("mouseenter", () => {
-    seeMoreBtn.style.background = "var(--button-hover)";
-    seeMoreBtn.style.transform = "translateY(-1px)";
-  });
-
-  seeMoreBtn.addEventListener("mouseleave", () => {
-    seeMoreBtn.style.background = "var(--button-bg)";
-    seeMoreBtn.style.transform = "translateY(0)";
-  });
-
-  seeMoreBtn.addEventListener("click", () => {
-    abrirModalComentarios(post.id, post.comments_count);
-  });
-
-  seeMoreContainer.appendChild(seeMoreBtn);
-
   commentsWrap.appendChild(inputRow);
   commentsWrap.appendChild(ul);
-  commentsWrap.appendChild(seeMoreContainer);
   postEl.appendChild(commentsWrap);
 
   // LIKE initial state
@@ -880,7 +855,7 @@ async function renderPost(post) {
     likeBtn.textContent = "❤️";
   }
 
-  function abrirImagemTelaCheia(imgUrl, imgContainer) {
+  function abrirImagemTelaCheia(imgUrl) {
     const modal = document.createElement("div");
     modal.className = "fullscreen-modal";
     modal.style.position = "fixed";
@@ -910,9 +885,7 @@ async function renderPost(post) {
     document.body.appendChild(modal);
 
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal);
-      }
+      if (e.target === modal) document.body.removeChild(modal);
     });
   }
 
@@ -962,14 +935,12 @@ async function renderPost(post) {
 
   likeBtn.addEventListener("click", async () => await handleLike(post, postEl, imgContainer, false));
 
-  // COMMENTS
+  // COMMENTS (simples)
   const commentsCountSpan = postEl.querySelector(".comments-count");
   const commentBtn = postEl.querySelector(".comment-btn");
-
   commentBtn.addEventListener("click", () => input.focus());
 
-  // Carregar 3 comentários mais recentes
-  await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
+  await carregarComentariosRecentes(post.id, ul, post);
 
   async function enviarComentario() {
     const content = input.value.trim();
@@ -988,7 +959,7 @@ async function renderPost(post) {
       commentsCountSpan.textContent =
         post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
 
-      await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
+      await carregarComentariosRecentes(post.id, ul, post);
     } catch (e) {
       console.error(e);
       alert(e?.message || "Erro ao comentar.");
@@ -1006,8 +977,7 @@ async function renderPost(post) {
   return postEl;
 }
 
-// -------- Comentários recentes (3) --------
-async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
+async function carregarComentariosRecentes(postId, ul, post) {
   ul.innerHTML = "";
 
   const { data, error } = await supa
@@ -1024,12 +994,6 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
 
   const commentsToShow = data || [];
   const isAdmin = currentProfile?.role === "admin";
-
-  if (post.comments_count > 3) {
-    seeMoreContainer.style.display = "block";
-  } else {
-    seeMoreContainer.style.display = "none";
-  }
 
   for (const c of commentsToShow) {
     const li = document.createElement("li");
@@ -1065,7 +1029,6 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
     const canDelete = isAdmin || c.user_id === currentUser?.id;
     if (canDelete) {
       const delBtn = makeIconButton({ title: "Excluir comentário", variant: "danger" });
-
       delBtn.addEventListener("click", async () => {
         const ok = confirm("Excluir este comentário?");
         if (!ok) return;
@@ -1080,7 +1043,9 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
 
           post.comments_count = Math.max(0, post.comments_count - 1);
 
-          const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
+          const postElement = document.querySelector(`.post[data-postid="${postId}"]`) ||
+                              document.querySelector(`.post[data-post-id="${postId}"]`) ||
+                              document.querySelector(`.post[data-post-id="${postId}"]`);
           const commentsCountSpan = postElement?.querySelector(".comments-count");
           if (commentsCountSpan) {
             commentsCountSpan.textContent =
@@ -1088,8 +1053,6 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
           }
 
           li.remove();
-
-          if (post.comments_count <= 3) seeMoreContainer.style.display = "none";
         } catch (e) {
           console.error(e);
           alert(e?.message || "Erro ao excluir comentário.");
@@ -1112,310 +1075,11 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
   }
 }
 
-// -------- Modal de comentários completos --------
-async function abrirModalComentarios(postId, totalComments) {
-  const modal = document.createElement("div");
-  modal.className = "comments-modal";
-  modal.style.position = "fixed";
-  modal.style.top = "0";
-  modal.style.left = "0";
-  modal.style.width = "100vw";
-  modal.style.height = "100vh";
-  modal.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-  modal.style.display = "flex";
-  modal.style.alignItems = "center";
-  modal.style.justifyContent = "center";
-  modal.style.zIndex = "10000";
-  modal.style.backdropFilter = "blur(10px)";
-  modal.style.padding = "20px";
-
-  const modalCard = document.createElement("div");
-  modalCard.className = "comments-modal-card";
-  modalCard.style.width = "100%";
-  modalCard.style.maxWidth = "500px";
-  modalCard.style.maxHeight = "80vh";
-  modalCard.style.background = "var(--bg-card)";
-  modalCard.style.border = "1px solid var(--border-color)";
-  modalCard.style.borderRadius = "20px";
-  modalCard.style.overflow = "hidden";
-  modalCard.style.display = "flex";
-  modalCard.style.flexDirection = "column";
-
-  const modalHeader = document.createElement("div");
-  modalHeader.style.display = "flex";
-  modalHeader.style.justifyContent = "space-between";
-  modalHeader.style.alignItems = "center";
-  modalHeader.style.padding = "16px 20px";
-  modalHeader.style.borderBottom = "1px solid var(--border-light)";
-  modalHeader.style.background = "var(--bg-secondary)";
-
-  const modalTitle = document.createElement("h3");
-  modalTitle.textContent = `Comentários (${totalComments})`;
-  modalTitle.style.color = "var(--text-primary)";
-  modalTitle.style.fontSize = "18px";
-  modalTitle.style.fontWeight = "700";
-  modalTitle.style.margin = "0";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.innerHTML = "×";
-  closeBtn.style.background = "none";
-  closeBtn.style.border = "none";
-  closeBtn.style.color = "var(--text-primary)";
-  closeBtn.style.fontSize = "28px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.width = "40px";
-  closeBtn.style.height = "40px";
-  closeBtn.style.display = "flex";
-  closeBtn.style.alignItems = "center";
-  closeBtn.style.justifyContent = "center";
-  closeBtn.style.borderRadius = "10px";
-  closeBtn.style.transition = "background 0.2s ease";
-
-  closeBtn.addEventListener("mouseenter", () => (closeBtn.style.background = "var(--button-bg)"));
-  closeBtn.addEventListener("mouseleave", () => (closeBtn.style.background = "none"));
-  closeBtn.addEventListener("click", () => document.body.removeChild(modal));
-
-  modalHeader.appendChild(modalTitle);
-  modalHeader.appendChild(closeBtn);
-
-  const commentsList = document.createElement("div");
-  commentsList.style.flex = "1";
-  commentsList.style.overflowY = "auto";
-  commentsList.style.padding = "20px";
-
-  const inputContainer = document.createElement("div");
-  inputContainer.style.padding = "0 20px 20px";
-  inputContainer.style.borderTop = "1px solid var(--border-light)";
-
-  const inputRow = document.createElement("div");
-  inputRow.style.display = "flex";
-  inputRow.style.gap = "10px";
-  inputRow.style.alignItems = "center";
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "Adicionar um comentário...";
-  input.style.flex = "1";
-  input.style.padding = "12px 14px";
-  input.style.background = "var(--input-bg)";
-  input.style.border = "1px solid var(--border-color)";
-  input.style.borderRadius = "12px";
-  input.style.color = "var(--text-primary)";
-  input.style.outline = "none";
-
-  const sendBtn = document.createElement("button");
-  sendBtn.type = "button";
-  sendBtn.textContent = "➤";
-  sendBtn.style.width = "40px";
-  sendBtn.style.height = "40px";
-  sendBtn.style.borderRadius = "10px";
-  sendBtn.style.border = "1px solid var(--border-color)";
-  sendBtn.style.background = "var(--button-bg)";
-  sendBtn.style.color = "var(--text-primary)";
-  sendBtn.style.cursor = "pointer";
-  sendBtn.style.transition = "background .15s ease";
-
-  sendBtn.addEventListener("mouseenter", () => (sendBtn.style.background = "var(--button-hover)"));
-  sendBtn.addEventListener("mouseleave", () => (sendBtn.style.background = "var(--button-bg)"));
-
-  inputRow.appendChild(input);
-  inputRow.appendChild(sendBtn);
-  inputContainer.appendChild(inputRow);
-
-  modalCard.appendChild(modalHeader);
-  modalCard.appendChild(commentsList);
-  modalCard.appendChild(inputContainer);
-  modal.appendChild(modalCard);
-  document.body.appendChild(modal);
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) document.body.removeChild(modal);
-  });
-
-  await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
-
-  async function enviarComentarioModal() {
-    const content = input.value.trim();
-    if (!content) return;
-
-    sendBtn.disabled = true;
-    sendBtn.style.opacity = "0.6";
-
-    try {
-      const { error } = await supa.from("comments").insert({ post_id: postId, user_id: currentUser.id, content });
-      if (error) throw error;
-
-      input.value = "";
-      totalComments += 1;
-      modalTitle.textContent = `Comentários (${totalComments})`;
-
-      const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
-      if (postElement) {
-        const commentsCountSpan = postElement.querySelector(".comments-count");
-        if (commentsCountSpan) {
-          commentsCountSpan.textContent = totalComments + (totalComments === 1 ? " comentário" : " comentários");
-        }
-
-        const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-        if (seeMoreContainer && totalComments > 3) seeMoreContainer.style.display = "block";
-      }
-
-      await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
-    } catch (e) {
-      console.error(e);
-      alert(e?.message || "Erro ao comentar.");
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.style.opacity = "1";
-    }
-  }
-
-  input.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") await enviarComentarioModal();
-  });
-  sendBtn.addEventListener("click", enviarComentarioModal);
-}
-
-async function carregarTodosComentarios(postId, container, titleElement, totalComments) {
-  container.innerHTML = "";
-
-  const { data, error } = await supa
-    .from("comments")
-    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    console.error(error);
-    container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Erro ao carregar comentários</p>`;
-    return;
-  }
-
-  const isAdmin = currentProfile?.role === "admin";
-
-  if (!data || data.length === 0) {
-    container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Nenhum comentário ainda</p>`;
-    return;
-  }
-
-  if (titleElement && data.length !== totalComments) {
-    titleElement.textContent = `Comentários (${data.length})`;
-  }
-
-  for (const c of data) {
-    const commentDiv = document.createElement("div");
-    commentDiv.style.padding = "12px 0";
-    commentDiv.style.borderBottom = "1px solid var(--border-light)";
-
-    const authorName = (c.profiles?.full_name || "Usuário").trim();
-
-    const meta = document.createElement("div");
-    meta.style.display = "flex";
-    meta.style.justifyContent = "space-between";
-    meta.style.alignItems = "center";
-    meta.style.marginBottom = "6px";
-
-    const authorAndDate = document.createElement("div");
-    authorAndDate.style.display = "flex";
-    authorAndDate.style.gap = "8px";
-    authorAndDate.style.alignItems = "center";
-
-    const authorSpan = document.createElement("span");
-    authorSpan.style.fontWeight = "800";
-    authorSpan.style.fontSize = "13px";
-    authorSpan.style.color = "var(--text-primary)";
-    authorSpan.textContent = authorName;
-
-    const dateSpan = document.createElement("span");
-    dateSpan.style.fontSize = "12px";
-    dateSpan.style.color = "var(--text-muted)";
-    dateSpan.textContent = fmtDateBR(c.created_at);
-
-    authorAndDate.appendChild(authorSpan);
-    authorAndDate.appendChild(dateSpan);
-    meta.appendChild(authorAndDate);
-
-    const canDelete = isAdmin || c.user_id === currentUser?.id;
-    if (canDelete) {
-      const delBtn = document.createElement("button");
-      delBtn.innerHTML = "🗑️";
-      delBtn.style.background = "none";
-      delBtn.style.border = "none";
-      delBtn.style.color = "var(--text-muted)";
-      delBtn.style.cursor = "pointer";
-      delBtn.style.fontSize = "14px";
-      delBtn.style.padding = "4px 8px";
-      delBtn.style.borderRadius = "6px";
-      delBtn.style.transition = "all 0.2s ease";
-
-      delBtn.addEventListener("mouseenter", () => {
-        delBtn.style.color = "#ff3b5c";
-        delBtn.style.background = "rgba(255, 59, 92, 0.1)";
-      });
-
-      delBtn.addEventListener("mouseleave", () => {
-        delBtn.style.color = "var(--text-muted)";
-        delBtn.style.background = "none";
-      });
-
-      delBtn.addEventListener("click", async () => {
-        const ok = confirm("Excluir este comentário?");
-        if (!ok) return;
-
-        delBtn.disabled = true;
-        delBtn.style.opacity = "0.6";
-
-        try {
-          const { error } = await supa.from("comments").delete().eq("id", c.id);
-          if (error) throw error;
-
-          commentDiv.remove();
-
-          const currentCount = parseInt(titleElement.textContent.match(/\d+/)[0]);
-          titleElement.textContent = `Comentários (${currentCount - 1})`;
-
-          const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
-          if (postElement) {
-            const commentsCountSpan = postElement.querySelector(".comments-count");
-            if (commentsCountSpan) {
-              const newCount = currentCount - 1;
-              commentsCountSpan.textContent = newCount + (newCount === 1 ? " comentário" : " comentários");
-            }
-
-            const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-            if (seeMoreContainer && currentCount - 1 <= 3) seeMoreContainer.style.display = "none";
-          }
-        } catch (e) {
-          console.error(e);
-          alert(e?.message || "Erro ao excluir comentário.");
-        } finally {
-          delBtn.disabled = false;
-          delBtn.style.opacity = "1";
-        }
-      });
-
-      meta.appendChild(delBtn);
-    }
-
-    const contentDiv = document.createElement("div");
-    contentDiv.style.fontSize = "14px";
-    contentDiv.style.color = "var(--text-secondary)";
-    contentDiv.style.lineHeight = "1.5";
-    contentDiv.textContent = c.content;
-
-    commentDiv.appendChild(meta);
-    commentDiv.appendChild(contentDiv);
-    container.appendChild(commentDiv);
-  }
-}
-
 // ----------------- Postar (ADMIN) -----------------
 window.abrirGaleria = function abrirGaleria() {
-  // agora abre escolha com/sem imagem
   openPostTypeChooser();
 };
 
-// Se seu HTML usa o botão .add-post direto, garante que funcione também:
 addPostBtn?.addEventListener("click", () => openPostTypeChooser());
 
 fileInput?.addEventListener("change", () => {
@@ -1456,9 +1120,6 @@ publishPost?.addEventListener("click", async () => {
 
   const caption = captionInput?.value?.trim() || "";
 
-  // regra:
-  // - com imagem: ok com legenda vazia (se você quiser exigir legenda, muda aqui)
-  // - sem imagem: exige texto
   if (!pendingFile && (!caption || caption.length === 0)) {
     alert("Escreva uma legenda para publicar sem imagem.");
     captionInput?.focus();
@@ -1472,7 +1133,6 @@ publishPost?.addEventListener("click", async () => {
   try {
     let filePath = null;
 
-    // se tiver imagem, faz upload
     if (pendingFile) {
       const ext = (pendingFile.name.split(".").pop() || "jpg").toLowerCase();
       const fileName = `${crypto.randomUUID()}.${ext}`;
@@ -1482,7 +1142,6 @@ publishPost?.addEventListener("click", async () => {
       if (upErr) throw upErr;
     }
 
-    // insert no banco (sem imagem => image_url = null)
     const payload = {
       user_id: currentUser.id,
       caption,
@@ -1496,13 +1155,10 @@ publishPost?.addEventListener("click", async () => {
     await carregarFeed();
   } catch (e) {
     console.error(e);
-
-    // Mensagem bem direta caso o SQL não tenha sido aplicado
     const msg = (e?.message || "").toLowerCase();
     if (msg.includes("image_url") && msg.includes("not-null")) {
       alert(
-        `Seu banco ainda está bloqueando post sem imagem.\n\n` +
-          `Rode este SQL no Supabase (SQL Editor):\n\n` +
+        `Seu banco ainda bloqueia post sem imagem.\n\nRode no Supabase SQL Editor:\n` +
           `alter table public.posts alter column image_url drop not null;`
       );
     } else {
