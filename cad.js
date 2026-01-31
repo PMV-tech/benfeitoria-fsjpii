@@ -237,8 +237,7 @@ async function cadastrar() {
     // Se exigir confirmação por email
     if (!data.session) {
       alert(
-        "Cadastro iniciado! Agora confirme seu email e depois faça login.\n\n" +
-          "Obs: se esse email já existir, o Supabase pode mostrar essa mesma mensagem por segurança."
+        "Cadastro realizado! Agora confirme seu email e depois faça login."
       );
       window.location.href = "index.html";
       return;
@@ -292,3 +291,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (emailEl) setTimeout(() => emailEl.focus(), 100);
 });
+
