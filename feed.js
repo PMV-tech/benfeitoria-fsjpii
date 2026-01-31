@@ -36,6 +36,7 @@ let pendingFile = null;
 let currentUser = null;
 let currentProfile = null;
 let editingCommentId = null;
+let profilesMap = {}; 
 
 // ----------------- TEMA -----------------
 function applyThemeToDynamicElements() {
@@ -413,7 +414,8 @@ init();
 async function carregarFeed() {
   feed.innerHTML = "";
 
-  const { data, error } = await supa
+  // 1) carrega posts + contadores da VIEW
+  const { data: posts, error } = await supa
     .from("v_feed")
     .select("*")
     .order("created_at", { ascending: false })
@@ -425,14 +427,37 @@ async function carregarFeed() {
     return;
   }
 
-  for (const post of data) {
+  // 2) monta lista única de user_id
+  const userIds = [...new Set((posts || []).map(p => p.user_id).filter(Boolean))];
+
+  // 3) busca nomes no profiles (para mostrar nome real no post)
+  profilesMap = {};
+  if (userIds.length) {
+    const { data: profs, error: profErr } = await supa
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+
+    if (profErr) {
+      console.warn("Não consegui carregar nomes de profiles (provável RLS):", profErr);
+    } else {
+      profilesMap = Object.fromEntries((profs || []).map(p => [p.id, p.full_name]));
+    }
+  }
+
+  // 4) renderiza posts, preenchendo author_name se vier faltando da view
+  for (const post of posts || []) {
+    const nameFromProfiles = profilesMap[post.user_id];
+    if (!post.author_name && nameFromProfiles) post.author_name = nameFromProfiles;
+
     const card = await renderPost(post);
     feed.appendChild(card);
   }
-  
+
   // Reaplicar tema após carregar posts
   applyThemeToDynamicElements();
 }
+
 
 function fmtDateBR(isoString) {
   if (!isoString) return "";
@@ -509,7 +534,7 @@ async function renderPost(post) {
   author.style.fontWeight = "800";
   author.style.fontSize = "14px";
   author.style.color = "var(--text-primary)";
-  author.textContent = post.author_name || "Usuário";
+  author.textContent = post.author_name || profilesMap[post.user_id] || "Usuário";
 
   const date = document.createElement("div");
   date.style.fontSize = "12px";
@@ -1533,15 +1558,3 @@ observer.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ['data-theme']
 });
-
-
-
-
-
-
-
-
-
-
-
-
