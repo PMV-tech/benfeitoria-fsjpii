@@ -581,6 +581,134 @@ function fmtDateBR(isoString) {
   return `${dd}/${mm}/${yy}, ${hh}:${mi}`;
 }
 
+
+
+// ----------------- Comentários: likes e respostas -----------------
+// Requer no Supabase:
+// - coluna comments.parent_comment_id (uuid, nullable) para respostas
+// - tabela comment_likes (comment_id, user_id) para curtidas em comentário
+async function safeSelectTopLevelComments(postId, ascending, limit) {
+  // tenta com parent_comment_id; se a coluna não existir, cai para "tudo"
+  let q = supa
+    .from("comments")
+    .select("id, content, created_at, user_id, parent_comment_id, profiles:profiles(full_name)")
+    .eq("post_id", postId);
+
+  try {
+    q = q.is("parent_comment_id", null);
+  } catch (_) {}
+
+  q = q.order("created_at", { ascending: !!ascending });
+  if (typeof limit === "number") q = q.limit(limit);
+
+  let { data, error } = await q;
+  if (error && String(error.message || "").toLowerCase().includes("parent_comment_id")) {
+    // retry sem parent_comment_id
+    const retry = await supa
+      .from("comments")
+      .select("id, content, created_at, user_id, profiles:profiles(full_name)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: !!ascending })
+      .limit(typeof limit === "number" ? limit : 1000);
+    data = retry.data;
+    error = retry.error;
+  }
+
+  if (error) throw error;
+  return data || [];
+}
+
+async function safeCountReplies(rootCommentId) {
+  try {
+    const { count, error } = await supa
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("parent_comment_id", rootCommentId);
+    if (error) throw error;
+    return count ?? 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function safeFetchReplies(rootCommentId) {
+  try {
+    const { data, error } = await supa
+      .from("comments")
+      .select("id, content, created_at, user_id, parent_comment_id, profiles:profiles(full_name)")
+      .eq("parent_comment_id", rootCommentId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function safeGetCommentLikeState(commentId) {
+  let count = 0;
+  let liked = false;
+
+  try {
+    const r1 = await supa
+      .from("comment_likes")
+      .select("*", { count: "exact", head: true })
+      .eq("comment_id", commentId);
+    if (!r1.error) count = r1.count ?? 0;
+  } catch (_) {}
+
+  try {
+    const r2 = await supa
+      .from("comment_likes")
+      .select("id")
+      .eq("comment_id", commentId)
+      .eq("user_id", currentUser?.id)
+      .maybeSingle();
+    if (!r2.error) liked = !!r2.data;
+  } catch (_) {}
+
+  return { count, liked };
+}
+
+async function safeToggleCommentLike(commentId) {
+  // retorna {count, liked} atualizado
+  try {
+    const existing = await supa
+      .from("comment_likes")
+      .select("id")
+      .eq("comment_id", commentId)
+      .eq("user_id", currentUser?.id)
+      .maybeSingle();
+
+    if (existing?.data?.id) {
+      await supa.from("comment_likes").delete().eq("id", existing.data.id);
+    } else {
+      await supa.from("comment_likes").insert({ comment_id: commentId, user_id: currentUser?.id });
+    }
+  } catch (_) {}
+
+  return await safeGetCommentLikeState(commentId);
+}
+
+function makeInlineActionButton(label) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = label;
+  btn.style.background = "none";
+  btn.style.border = "none";
+  btn.style.padding = "0";
+  btn.style.margin = "0";
+  btn.style.cursor = "pointer";
+  btn.style.fontSize = "12px";
+  btn.style.fontWeight = "800";
+  btn.style.color = "var(--text-muted)";
+  btn.style.opacity = "0.9";
+  btn.style.transition = "opacity .15s ease";
+  btn.addEventListener("mouseenter", () => (btn.style.opacity = "1"));
+  btn.addEventListener("mouseleave", () => (btn.style.opacity = "0.9"));
+  return btn;
+}
+
 // Função para criar animação de coração
 function criarAnimacaoCurtida(container, isLiked) {
   if (!container) return;
@@ -848,6 +976,40 @@ async function renderPost(post) {
   const commentsWrap = document.createElement("div");
   commentsWrap.className = "comments";
 
+  // Estado de resposta (para "Responder")
+  let replyToCommentId = null;
+  let replyToName = null;
+
+  const replyBanner = document.createElement("div");
+  replyBanner.style.display = "none";
+  replyBanner.style.margin = "10px 0 8px";
+  replyBanner.style.padding = "10px 12px";
+  replyBanner.style.borderRadius = "14px";
+  replyBanner.style.border = "1px solid var(--border-color)";
+  replyBanner.style.background = "var(--bg-secondary)";
+  replyBanner.style.color = "var(--text-primary)";
+  replyBanner.style.fontSize = "12px";
+  replyBanner.style.display = "none";
+  replyBanner.style.alignItems = "center";
+  replyBanner.style.justifyContent = "space-between";
+  replyBanner.style.gap = "10px";
+
+  const replyBannerText = document.createElement("div");
+  replyBannerText.style.fontWeight = "800";
+  const replyBannerCancel = makeIconButton({ title: "Cancelar resposta", icon: "x" });
+  replyBannerCancel.style.width = "30px";
+  replyBannerCancel.style.height = "30px";
+  replyBannerCancel.addEventListener("click", () => {
+    replyToCommentId = null;
+    replyToName = null;
+    replyBanner.style.display = "none";
+    if (input) input.placeholder = "Adicionar um comentário...";
+  });
+
+  replyBanner.appendChild(replyBannerText);
+  replyBanner.appendChild(replyBannerCancel);
+
+
   const inputRow = document.createElement("div");
   inputRow.style.display = "flex";
   inputRow.style.gap = "10px";
@@ -921,6 +1083,7 @@ async function renderPost(post) {
 
   seeMoreContainer.appendChild(seeMoreBtn);
 
+  commentsWrap.appendChild(replyBanner);
   commentsWrap.appendChild(inputRow);
   commentsWrap.appendChild(ul);
   commentsWrap.appendChild(seeMoreContainer);
@@ -1040,7 +1203,18 @@ async function renderPost(post) {
 
   commentBtn.addEventListener("click", () => input.focus());
 
-  await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
+  const previewControls = {
+    setReplyTarget: (commentId, name) => {
+      replyToCommentId = commentId;
+      replyToName = name;
+      replyBannerText.textContent = `Respondendo a ${replyToName}`;
+      replyBanner.style.display = "flex";
+      input.placeholder = `Responder para ${replyToName}...`;
+      setTimeout(() => input.focus(), 20);
+    },
+  };
+
+  await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post, previewControls);
 
   async function enviarComentario() {
     const content = input.value.trim();
@@ -1052,17 +1226,24 @@ async function renderPost(post) {
     try {
       const { error } = await supa
         .from("comments")
-        .insert({ post_id: post.id, user_id: currentUser.id, content });
+        .insert({ post_id: post.id, user_id: currentUser.id, content, parent_comment_id: replyToCommentId });
 
       if (error) throw error;
 
       input.value = "";
+
+      // reset reply state
+      replyToCommentId = null;
+      replyToName = null;
+      replyBanner.style.display = "none";
+      input.placeholder = "Adicionar um comentário...";
+
       post.comments_count += 1;
 
       commentsCountSpan.textContent =
         post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
 
-      await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
+      await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post, previewControls);
     } catch (e) {
       console.error(e);
       alert(e?.message || "Erro ao comentar.");
@@ -1081,22 +1262,19 @@ async function renderPost(post) {
 }
 
 // Função para carregar apenas comentários MAIS RECENTES (preview no feed)
-async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
+async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post, controls = {}) {
   ul.innerHTML = "";
 
-  const { data, error } = await supa
-    .from("comments")
-    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
-    .eq("post_id", postId)
-    .order("created_at", { ascending: false })
-    .limit(COMMENT_PREVIEW_LIMIT);
+  let commentsToShow = [];
 
-  if (error) {
+  try {
+    commentsToShow = await safeSelectTopLevelComments(postId, false, COMMENT_PREVIEW_LIMIT);
+  } catch (error) {
     console.error(error);
     return;
   }
 
-  const commentsToShow = data || [];
+  
   const isAdmin = currentProfile?.role === "admin";
 
   if (post.comments_count > COMMENT_PREVIEW_LIMIT) {
@@ -1134,6 +1312,61 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
     left.appendChild(meta);
     left.appendChild(txt);
 
+    // Ações: curtir comentário / responder / ver respostas
+    const actionsRow = document.createElement("div");
+    actionsRow.style.display = "flex";
+    actionsRow.style.gap = "14px";
+    actionsRow.style.marginTop = "6px";
+    actionsRow.style.alignItems = "center";
+
+    const likeBtn = makeInlineActionButton("🤍");
+    likeBtn.style.fontSize = "13px";
+    likeBtn.style.fontWeight = "900";
+
+    const likeCount = document.createElement("span");
+    likeCount.style.fontSize = "12px";
+    likeCount.style.color = "var(--text-muted)";
+    likeCount.style.fontWeight = "800";
+
+    const replyBtn = makeInlineActionButton("Responder");
+
+    // inicializa estado de like
+    (async () => {
+      const st = await safeGetCommentLikeState(c.id);
+      likeBtn.textContent = st.liked ? "❤️" : "🤍";
+      likeCount.textContent = st.count ? String(st.count) : "";
+    })();
+
+    likeBtn.addEventListener("click", async () => {
+      const st = await safeToggleCommentLike(c.id);
+      likeBtn.textContent = st.liked ? "❤️" : "🤍";
+      likeCount.textContent = st.count ? String(st.count) : "";
+    });
+
+    replyBtn.addEventListener("click", () => {
+      if (typeof controls.setReplyTarget === "function") {
+        controls.setReplyTarget(c.id, authorName);
+      }
+    });
+
+    actionsRow.appendChild(likeBtn);
+    actionsRow.appendChild(likeCount);
+    actionsRow.appendChild(replyBtn);
+
+    // Ver respostas (se existir)
+    (async () => {
+      const rc = await safeCountReplies(c.id);
+      if (rc > 0) {
+        const viewReplies = makeInlineActionButton(`Ver respostas (${rc})`);
+        viewReplies.addEventListener("click", async () => {
+          await abrirModalComentarios(postId, post.comments_count, { focusCommentId: c.id, autoExpand: true });
+        });
+        actionsRow.appendChild(viewReplies);
+      }
+    })();
+
+    left.appendChild(actionsRow);
+
     li.appendChild(left);
 
     const canDelete = isAdmin || c.user_id === currentUser?.id;
@@ -1168,7 +1401,7 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
               post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
           }
 
-          await carregarComentariosRecentes(postId, ul, seeMoreContainer, post);
+          await carregarComentariosRecentes(postId, ul, seeMoreContainer, post, controls);
         } catch (e) {
           console.error(e);
           alert(e?.message || "Erro ao excluir comentário.");
@@ -1192,7 +1425,7 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
 }
 
 // Função para abrir modal com todos os comentários
-async function abrirModalComentarios(postId, totalComments) {
+async function abrirModalComentarios(postId, totalComments, options = {}) {
   const modal = document.createElement("div");
   modal.className = "comments-modal";
   modal.style.position = "fixed";
@@ -1277,6 +1510,40 @@ async function abrirModalComentarios(postId, totalComments) {
   inputContainer.style.padding = "0 20px 20px";
   inputContainer.style.borderTop = "1px solid var(--border-light)";
 
+  // Estado de resposta no modal
+  let modalReplyToId = null;
+  let modalReplyToName = null;
+
+  const modalReplyBanner = document.createElement("div");
+  modalReplyBanner.style.display = "none";
+  modalReplyBanner.style.margin = "14px 0 10px";
+  modalReplyBanner.style.padding = "10px 12px";
+  modalReplyBanner.style.borderRadius = "14px";
+  modalReplyBanner.style.border = "1px solid var(--border-color)";
+  modalReplyBanner.style.background = "var(--bg-secondary)";
+  modalReplyBanner.style.color = "var(--text-primary)";
+  modalReplyBanner.style.fontSize = "12px";
+  modalReplyBanner.style.display = "none";
+  modalReplyBanner.style.alignItems = "center";
+  modalReplyBanner.style.justifyContent = "space-between";
+  modalReplyBanner.style.gap = "10px";
+
+  const modalReplyBannerText = document.createElement("div");
+  modalReplyBannerText.style.fontWeight = "800";
+  const modalReplyCancel = makeIconButton({ title: "Cancelar resposta", icon: "x" });
+  modalReplyCancel.style.width = "30px";
+  modalReplyCancel.style.height = "30px";
+  modalReplyCancel.addEventListener("click", () => {
+    modalReplyToId = null;
+    modalReplyToName = null;
+    modalReplyBanner.style.display = "none";
+    input.placeholder = "Adicionar um comentário...";
+  });
+
+  modalReplyBanner.appendChild(modalReplyBannerText);
+  modalReplyBanner.appendChild(modalReplyCancel);
+
+
   const inputRow = document.createElement("div");
   inputRow.style.display = "flex";
   inputRow.style.gap = "10px";
@@ -1315,6 +1582,7 @@ async function abrirModalComentarios(postId, totalComments) {
 
   inputRow.appendChild(input);
   inputRow.appendChild(sendBtn);
+  inputContainer.appendChild(modalReplyBanner);
   inputContainer.appendChild(inputRow);
 
   modalCard.appendChild(modalHeader);
@@ -1329,7 +1597,19 @@ async function abrirModalComentarios(postId, totalComments) {
     }
   });
 
-  await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
+  
+  // helper para definir alvo de resposta no modal (thread por comentário raiz)
+  function setReplyTarget(rootId, name) {
+    modalReplyToId = rootId;
+    modalReplyToName = name;
+    modalReplyBannerText.textContent = `Respondendo a ${modalReplyToName}`;
+    modalReplyBanner.style.display = "flex";
+    input.placeholder = `Responder para ${modalReplyToName}...`;
+    setTimeout(() => input.focus(), 20);
+  }
+
+  const mergedOptions = { ...options, setReplyTarget };
+await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments, mergedOptions);
 
   async function enviarComentarioModal() {
     const content = input.value.trim();
@@ -1341,11 +1621,18 @@ async function abrirModalComentarios(postId, totalComments) {
     try {
       const { error } = await supa
         .from("comments")
-        .insert({ post_id: postId, user_id: currentUser.id, content });
+        .insert({ post_id: postId, user_id: currentUser.id, content, parent_comment_id: modalReplyToId });
 
       if (error) throw error;
 
       input.value = "";
+
+      // reset reply state
+      modalReplyToId = null;
+      modalReplyToName = null;
+      modalReplyBanner.style.display = "none";
+      input.placeholder = "Adicionar um comentário...";
+
       totalComments += 1;
       modalTitle.textContent = `Comentários (${totalComments})`;
 
@@ -1362,7 +1649,7 @@ async function abrirModalComentarios(postId, totalComments) {
         }
       }
 
-      await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
+      await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments, mergedOptions);
     } catch (e) {
       console.error(e);
       alert(e?.message || "Erro ao comentar.");
@@ -1378,16 +1665,18 @@ async function abrirModalComentarios(postId, totalComments) {
   sendBtn.addEventListener("click", enviarComentarioModal);
 }
 
-async function carregarTodosComentarios(postId, container, titleElement, totalComments) {
+async function carregarTodosComentarios(postId, container, titleElement, totalComments, options = {}) {
   container.innerHTML = "";
 
-  const { data, error } = await supa
-    .from("comments")
-    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true });
+  let data = [];
+  let error = null;
 
-  if (error) {
+  try {
+    data = await safeSelectTopLevelComments(postId, true, undefined);
+  } catch (e) {
+    error = e;
+  }
+if (error) {
     console.error(error);
     container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Erro ao carregar comentários</p>`;
     return;
@@ -1499,7 +1788,7 @@ async function carregarTodosComentarios(postId, container, titleElement, totalCo
             // Atualiza o preview do feed também (para não ficar "perdido")
             const ul = postElement.querySelector(".comments ul");
             if (ul && seeMoreContainer) {
-              await carregarComentariosRecentes(postId, ul, seeMoreContainer, { comments_count: safeCount });
+              await carregarComentariosRecentes(postId, ul, seeMoreContainer, { comments_count: safeCount }, {});
             }
           }
 
@@ -1523,8 +1812,206 @@ async function carregarTodosComentarios(postId, container, titleElement, totalCo
     contentDiv.style.lineHeight = "1.5";
     contentDiv.textContent = c.content;
 
+    // Ações (curtir / responder / ver respostas)
+    const actionsRow = document.createElement("div");
+    actionsRow.style.display = "flex";
+    actionsRow.style.gap = "14px";
+    actionsRow.style.marginTop = "8px";
+    actionsRow.style.alignItems = "center";
+
+    const likeBtn = makeInlineActionButton("🤍");
+    likeBtn.style.fontSize = "13px";
+    likeBtn.style.fontWeight = "900";
+
+    const likeCount = document.createElement("span");
+    likeCount.style.fontSize = "12px";
+    likeCount.style.color = "var(--text-muted)";
+    likeCount.style.fontWeight = "800";
+
+    const replyBtn = makeInlineActionButton("Responder");
+
+    // init like state
+    (async () => {
+      const st = await safeGetCommentLikeState(c.id);
+      likeBtn.textContent = st.liked ? "❤️" : "🤍";
+      likeCount.textContent = st.count ? String(st.count) : "";
+    })();
+
+    likeBtn.addEventListener("click", async () => {
+      const st = await safeToggleCommentLike(c.id);
+      likeBtn.textContent = st.liked ? "❤️" : "🤍";
+      likeCount.textContent = st.count ? String(st.count) : "";
+    });
+
+    replyBtn.addEventListener("click", () => {
+      if (options?.setReplyTarget) options.setReplyTarget(c.id, authorName);
+    });
+
+    actionsRow.appendChild(likeBtn);
+    actionsRow.appendChild(likeCount);
+    actionsRow.appendChild(replyBtn);
+
+    const repliesContainer = document.createElement("div");
+    repliesContainer.style.marginTop = "10px";
+    repliesContainer.style.marginLeft = "14px";
+    repliesContainer.style.paddingLeft = "10px";
+    repliesContainer.style.borderLeft = "2px solid var(--border-light)";
+    repliesContainer.style.display = "none";
+
+    let repliesLoaded = false;
+
+    // Ver respostas (toggle)
+    (async () => {
+      const rc = await safeCountReplies(c.id);
+      if (rc > 0) {
+        const viewBtn = makeInlineActionButton(`Ver respostas (${rc})`);
+        viewBtn.addEventListener("click", async () => {
+          const isOpen = repliesContainer.style.display === "block";
+          if (isOpen) {
+            repliesContainer.style.display = "none";
+            return;
+          }
+
+          repliesContainer.style.display = "block";
+
+          if (!repliesLoaded) {
+            repliesLoaded = true;
+            const replies = await safeFetchReplies(c.id);
+
+            for (const r of replies) {
+              const row = document.createElement("div");
+              row.style.padding = "10px 0";
+              row.style.borderBottom = "1px solid var(--border-light)";
+
+              const rAuthor = (r.profiles?.full_name || "Usuário").trim();
+
+              const rMeta = document.createElement("div");
+              rMeta.style.display = "flex";
+              rMeta.style.justifyContent = "space-between";
+              rMeta.style.alignItems = "center";
+              rMeta.style.marginBottom = "4px";
+
+              const rLeft = document.createElement("div");
+              rLeft.style.display = "flex";
+              rLeft.style.gap = "8px";
+              rLeft.style.alignItems = "center";
+
+              const rAuthorSpan = document.createElement("span");
+              rAuthorSpan.style.fontWeight = "800";
+              rAuthorSpan.style.fontSize = "12px";
+              rAuthorSpan.style.color = "var(--text-primary)";
+              rAuthorSpan.textContent = rAuthor;
+
+              const rDate = document.createElement("span");
+              rDate.style.fontSize = "11px";
+              rDate.style.color = "var(--text-muted)";
+              rDate.textContent = fmtDateBR(r.created_at);
+
+              rLeft.appendChild(rAuthorSpan);
+              rLeft.appendChild(rDate);
+
+              rMeta.appendChild(rLeft);
+
+              const rCanDelete = isAdmin || r.user_id === currentUser?.id;
+              if (rCanDelete) {
+                const rDel = document.createElement("button");
+                rDel.innerHTML = "🗑️";
+                rDel.style.background = "none";
+                rDel.style.border = "none";
+                rDel.style.color = "var(--text-muted)";
+                rDel.style.cursor = "pointer";
+                rDel.style.fontSize = "13px";
+                rDel.style.padding = "2px 6px";
+                rDel.style.borderRadius = "6px";
+
+                rDel.addEventListener("mouseenter", () => {
+                  rDel.style.color = "#ff3b5c";
+                  rDel.style.background = "rgba(255, 59, 92, 0.1)";
+                });
+
+                rDel.addEventListener("mouseleave", () => {
+                  rDel.style.color = "var(--text-muted)";
+                  rDel.style.background = "none";
+                });
+
+                rDel.addEventListener("click", async () => {
+                  const ok = confirm("Excluir este comentário?");
+                  if (!ok) return;
+                  try {
+                    await supa.from("comments").delete().eq("id", r.id);
+                    await carregarTodosComentarios(postId, container, titleElement, totalComments, options);
+                  } catch (e) {
+                    console.error(e);
+                    alert(e?.message || "Erro ao excluir comentário.");
+                  }
+                });
+
+                rMeta.appendChild(rDel);
+              }
+
+              const rTxt = document.createElement("div");
+              rTxt.style.fontSize = "13px";
+              rTxt.style.color = "var(--text-secondary)";
+              rTxt.textContent = r.content;
+
+              const rActions = document.createElement("div");
+              rActions.style.display = "flex";
+              rActions.style.gap = "14px";
+              rActions.style.marginTop = "6px";
+              rActions.style.alignItems = "center";
+
+              const rLikeBtn = makeInlineActionButton("🤍");
+              rLikeBtn.style.fontSize = "13px";
+              rLikeBtn.style.fontWeight = "900";
+
+              const rLikeCount = document.createElement("span");
+              rLikeCount.style.fontSize = "12px";
+              rLikeCount.style.color = "var(--text-muted)";
+              rLikeCount.style.fontWeight = "800";
+
+              (async () => {
+                const st = await safeGetCommentLikeState(r.id);
+                rLikeBtn.textContent = st.liked ? "❤️" : "🤍";
+                rLikeCount.textContent = st.count ? String(st.count) : "";
+              })();
+
+              rLikeBtn.addEventListener("click", async () => {
+                const st = await safeToggleCommentLike(r.id);
+                rLikeBtn.textContent = st.liked ? "❤️" : "🤍";
+                rLikeCount.textContent = st.count ? String(st.count) : "";
+              });
+
+              const rReplyBtn = makeInlineActionButton("Responder");
+              rReplyBtn.addEventListener("click", () => {
+                // mantém a thread no raiz, mas mostra o nome do alvo
+                if (options?.setReplyTarget) options.setReplyTarget(c.id, rAuthor);
+              });
+
+              rActions.appendChild(rLikeBtn);
+              rActions.appendChild(rLikeCount);
+              rActions.appendChild(rReplyBtn);
+
+              row.appendChild(rMeta);
+              row.appendChild(rTxt);
+              row.appendChild(rActions);
+              repliesContainer.appendChild(row);
+            }
+          }
+        });
+
+        actionsRow.appendChild(viewBtn);
+
+        // auto-expand e foco em um comentário específico
+        if (options?.autoExpand && options?.focusCommentId === c.id) {
+          setTimeout(() => viewBtn.click(), 60);
+        }
+      }
+    })();
+
     commentDiv.appendChild(meta);
     commentDiv.appendChild(contentDiv);
+    commentDiv.appendChild(actionsRow);
+    commentDiv.appendChild(repliesContainer);
     container.appendChild(commentDiv);
   }
 }
