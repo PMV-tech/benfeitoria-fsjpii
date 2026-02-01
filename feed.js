@@ -53,6 +53,44 @@ const pinnedEmpty = document.getElementById("pinnedEmpty");
 const activityList = document.getElementById("activityList");
 const activityEmpty = document.getElementById("activityEmpty");
 
+
+// Menu / Views
+const navFeed = document.getElementById("navFeed");
+const navNotifications = document.getElementById("navNotifications");
+const navNotices = document.getElementById("navNotices");
+const navEvents = document.getElementById("navEvents");
+const notifBadge = document.getElementById("notifBadge");
+
+const mainContent = document.getElementById("mainContent");
+const viewFeed = document.getElementById("view-feed");
+const viewNotifications = document.getElementById("view-notifications");
+const viewNotices = document.getElementById("view-notices");
+const viewEvents = document.getElementById("view-events");
+
+const notifList = document.getElementById("notifList");
+const notifEmpty = document.getElementById("notifEmpty");
+const btnMarkRead = document.getElementById("btnMarkRead");
+
+const noticesList = document.getElementById("noticesList");
+const noticesEmpty = document.getElementById("noticesEmpty");
+const btnNewPinnedCenter = document.getElementById("btnNewPinnedCenter");
+
+const eventsList = document.getElementById("eventsList");
+const eventsEmpty = document.getElementById("eventsEmpty");
+const btnNewEvent = document.getElementById("btnNewEvent");
+
+// Notificações: last seen (localStorage por usuário)
+function notifKey() {
+  return currentUser?.id ? `notif_last_seen_${currentUser.id}` : "notif_last_seen";
+}
+function getNotifLastSeen() {
+  const v = localStorage.getItem(notifKey());
+  return v ? new Date(v) : new Date(0);
+}
+function setNotifLastSeenNow() {
+  localStorage.setItem(notifKey(), new Date().toISOString());
+}
+
 // Botão +
 const addPostBtn = document.querySelector(".add-post");
 
@@ -636,6 +674,415 @@ async function loadActivitySidebar() {
   });
 }
 
+
+// ----------------- Menu / Views -----------------
+const VIEWS = ["feed", "notifications", "notices", "events"];
+
+function setActiveNav(viewName) {
+  const map = {
+    feed: navFeed,
+    notifications: navNotifications,
+    notices: navNotices,
+    events: navEvents,
+  };
+  Object.entries(map).forEach(([k, el]) => {
+    if (!el) return;
+    if (k === viewName) el.classList.add("active");
+    else el.classList.remove("active");
+  });
+}
+
+function setActiveView(viewName) {
+  const map = {
+    feed: viewFeed,
+    notifications: viewNotifications,
+    notices: viewNotices,
+    events: viewEvents,
+  };
+  Object.entries(map).forEach(([k, el]) => {
+    if (!el) return;
+    if (k === viewName) el.classList.add("view-active");
+    else el.classList.remove("view-active");
+  });
+}
+
+function switchView(viewName) {
+  if (!VIEWS.includes(viewName)) viewName = "feed";
+  setActiveNav(viewName);
+  setActiveView(viewName);
+  try { localStorage.setItem("active_view", viewName); } catch (_) {}
+
+  if (viewName === "notifications") {
+    loadNotificationsView();
+  } else if (viewName === "notices") {
+    loadNoticesView();
+  } else if (viewName === "events") {
+    loadEventsView();
+  }
+}
+
+function scrollToPost(postId) {
+  if (!postId) return;
+  // garante que está no feed
+  if (!viewFeed?.classList.contains("view-active")) switchView("feed");
+
+  const target = document.querySelector(`.post[data-post-id="${postId}"]`);
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.add("pulse-highlight");
+    setTimeout(() => target.classList.remove("pulse-highlight"), 1200);
+  }
+}
+
+function setupMenu() {
+  const navs = [navFeed, navNotifications, navNotices, navEvents].filter(Boolean);
+  navs.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = btn.getAttribute("data-view");
+      switchView(v || "feed");
+    });
+  });
+
+  // Botões de ação
+  btnMarkRead?.addEventListener("click", () => {
+    setNotifLastSeenNow();
+    loadNotificationsBadge();
+    loadNotificationsView();
+  });
+
+  // Central "Novo aviso fixado" (somente admin)
+  const isAdmin = currentProfile?.role === "admin";
+  if (btnNewPinnedCenter) btnNewPinnedCenter.style.display = isAdmin ? "" : "none";
+  btnNewPinnedCenter?.addEventListener("click", () => btnNewPinned?.click());
+
+  // Eventos (placeholder por enquanto)
+  btnNewEvent?.addEventListener("click", () => {
+    alert("Eventos: em breve (vamos implementar depois).");
+  });
+
+  // Restaura última view
+  const saved = localStorage.getItem("active_view");
+  if (saved && VIEWS.includes(saved)) switchView(saved);
+  else switchView("feed");
+}
+
+// ----------------- Notificações -----------------
+async function fetchMyPostIds() {
+  const { data, error } = await supa.from("posts").select("id").eq("user_id", currentUser.id).limit(300);
+  if (error) return [];
+  return (data || []).map((p) => p.id).filter(Boolean);
+}
+
+function mkAvatarInitials(name) {
+  const n = (name || "U").trim();
+  const parts = n.split(/\s+/).filter(Boolean);
+  const a = (parts[0] || "U")[0] || "U";
+  const b = (parts[1] || "")[0] || "";
+  return (a + b).toUpperCase();
+}
+
+async function fetchNotifications(limit = 50) {
+  const items = [];
+  const seen = new Set();
+
+  const myPostIds = await fetchMyPostIds();
+  if (!myPostIds.length) return [];
+
+  // Likes em posts meus
+  try {
+    const { data } = await supa
+      .from("likes")
+      .select("id, created_at, user_id, post_id, profiles(full_name)")
+      .in("post_id", myPostIds)
+      .neq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    (data || []).forEach((l) => {
+      const key = `like:${l.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        type: "like",
+        id: l.id,
+        created_at: l.created_at,
+        actor: l.profiles?.full_name || "Usuário",
+        post_id: l.post_id,
+      });
+    });
+  } catch (_) {}
+
+  // Comentários em posts meus (inclui respostas)
+  try {
+    const { data } = await supa
+      .from("comments")
+      .select("id, created_at, user_id, post_id, parent_comment_id, content, profiles:profiles(full_name)")
+      .in("post_id", myPostIds)
+      .neq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    (data || []).forEach((c) => {
+      const key = `comment:${c.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({
+        type: c.parent_comment_id ? "reply_on_post" : "comment",
+        id: c.id,
+        created_at: c.created_at,
+        actor: c.profiles?.full_name || "Usuário",
+        post_id: c.post_id,
+        text: c.content || "",
+      });
+    });
+  } catch (_) {}
+
+  // Respostas aos meus comentários (quando eu comento em qualquer post)
+  try {
+    const { data: myComments } = await supa
+      .from("comments")
+      .select("id")
+      .eq("user_id", currentUser.id)
+      .limit(300);
+
+    const myCommentIds = (myComments || []).map((x) => x.id).filter(Boolean);
+
+    if (myCommentIds.length) {
+      const { data } = await supa
+        .from("comments")
+        .select("id, created_at, user_id, post_id, parent_comment_id, content, profiles:profiles(full_name)")
+        .in("parent_comment_id", myCommentIds)
+        .neq("user_id", currentUser.id)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      (data || []).forEach((c) => {
+        const key = `reply:${c.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({
+          type: "reply",
+          id: c.id,
+          created_at: c.created_at,
+          actor: c.profiles?.full_name || "Usuário",
+          post_id: c.post_id,
+          text: c.content || "",
+        });
+      });
+
+      // Curtidas nos meus comentários (se a tabela existir)
+      try {
+        const { data: cl } = await supa
+          .from("comment_likes")
+          .select("id, created_at, user_id, comment_id, profiles:profiles(full_name)")
+          .in("comment_id", myCommentIds)
+          .neq("user_id", currentUser.id)
+          .order("created_at", { ascending: false })
+          .limit(limit);
+
+        (cl || []).forEach((l) => {
+          const key = `comment_like:${l.id}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          items.push({
+            type: "comment_like",
+            id: l.id,
+            created_at: l.created_at,
+            actor: l.profiles?.full_name || "Usuário",
+            post_id: null,
+            comment_id: l.comment_id,
+          });
+        });
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  // Ordena por data
+  items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return items.slice(0, limit);
+}
+
+function notifMessage(n) {
+  const actor = n.actor || "Alguém";
+  if (n.type === "like") return `${actor} curtiu seu post`;
+  if (n.type === "comment") return `${actor} comentou no seu post`;
+  if (n.type === "reply") return `${actor} respondeu seu comentário`;
+  if (n.type === "comment_like") return `${actor} curtiu seu comentário`;
+  // fallback
+  return `${actor} interagiu`;
+}
+
+function notifSnippet(n) {
+  const t = (n.text || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  return t.length > 70 ? t.slice(0, 70) + "…" : t;
+}
+
+function renderNotifItem(n, unread) {
+  const item = document.createElement("div");
+  item.className = "view-item" + (unread ? " unread" : "");
+  item.dataset.postId = n.post_id || "";
+
+  const avatar = document.createElement("div");
+  avatar.className = "vi-avatar";
+  avatar.textContent = mkAvatarInitials(n.actor);
+
+  const main = document.createElement("div");
+  main.className = "vi-main";
+
+  const title = document.createElement("div");
+  title.className = "vi-title";
+  title.textContent = notifMessage(n);
+
+  const sub = document.createElement("div");
+  sub.className = "vi-sub";
+  const sn = notifSnippet(n);
+  sub.textContent = sn || (n.type === "comment_like" ? "Toque para ver detalhes" : "Toque para abrir o post");
+
+  const meta = document.createElement("div");
+  meta.className = "vi-meta";
+  meta.textContent = fmtDateBR(n.created_at);
+
+  main.appendChild(title);
+  main.appendChild(sub);
+  main.appendChild(meta);
+
+  item.appendChild(avatar);
+  item.appendChild(main);
+
+  item.addEventListener("click", async () => {
+    // garante feed carregado
+    if (n.post_id) {
+      // se post não existe no DOM (por limitação de 50), recarrega
+      if (!document.querySelector(`.post[data-post-id="${n.post_id}"]`)) {
+        await carregarFeed();
+      }
+      scrollToPost(n.post_id);
+    } else {
+      alert("Essa notificação não está vinculada diretamente a um post (em breve).");
+    }
+  });
+
+  return item;
+}
+
+async function loadNotificationsBadge() {
+  if (!notifBadge) return;
+
+  const lastSeen = getNotifLastSeen();
+  const list = await fetchNotifications(60);
+  const unreadCount = list.filter((n) => new Date(n.created_at) > lastSeen).length;
+
+  if (unreadCount > 0) {
+    notifBadge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+    notifBadge.style.display = "inline-flex";
+  } else {
+    notifBadge.style.display = "none";
+  }
+}
+
+async function loadNotificationsView() {
+  if (!notifList || !notifEmpty) return;
+
+  notifList.innerHTML = "";
+  notifEmpty.style.display = "none";
+
+  const lastSeen = getNotifLastSeen();
+  const list = await fetchNotifications(60);
+
+  if (!list.length) {
+    notifEmpty.textContent = "Sem notificações.";
+    notifEmpty.style.display = "";
+    return;
+  }
+
+  list.forEach((n) => {
+    const unread = new Date(n.created_at) > lastSeen;
+    notifList.appendChild(renderNotifItem(n, unread));
+  });
+}
+
+// ----------------- Avisos (view) -----------------
+async function loadNoticesView() {
+  if (!noticesList || !noticesEmpty) return;
+
+  noticesList.innerHTML = "";
+  noticesEmpty.style.display = "none";
+
+  if (!hasPinnedColumn) {
+    noticesEmpty.textContent = "Para usar avisos, adicione a coluna 'pinned' na tabela posts.";
+    noticesEmpty.style.display = "";
+    return;
+  }
+
+  const { data, error } = await supa
+    .from("posts")
+    .select("id, caption, created_at, user_id, pinned")
+    .eq("pinned", true)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  if (error) {
+    noticesEmpty.textContent = "Erro ao carregar avisos.";
+    noticesEmpty.style.display = "";
+    return;
+  }
+
+  const list = Array.isArray(data) ? data : [];
+  if (!list.length) {
+    noticesEmpty.textContent = "Nenhum aviso fixado ainda.";
+    noticesEmpty.style.display = "";
+    return;
+  }
+
+  list.forEach((p) => {
+    const item = document.createElement("div");
+    item.className = "view-item";
+    const avatar = document.createElement("div");
+    avatar.className = "vi-avatar";
+    avatar.textContent = mkAvatarInitials(profilesMap[p.user_id] || "Usuário");
+
+    const main = document.createElement("div");
+    main.className = "vi-main";
+    const title = document.createElement("div");
+    title.className = "vi-title";
+    title.textContent = (profilesMap[p.user_id] || "Usuário") + " • Aviso fixado";
+
+    const sub = document.createElement("div");
+    sub.className = "vi-sub";
+    const txt = (p.caption || "").replace(/\s+/g, " ").trim() || "(sem texto)";
+    sub.textContent = txt.length > 90 ? txt.slice(0, 90) + "…" : txt;
+
+    const meta = document.createElement("div");
+    meta.className = "vi-meta";
+    meta.textContent = fmtDateBR(p.created_at);
+
+    main.appendChild(title);
+    main.appendChild(sub);
+    main.appendChild(meta);
+
+    item.appendChild(avatar);
+    item.appendChild(main);
+
+    item.addEventListener("click", async () => {
+      if (!document.querySelector(`.post[data-post-id="${p.id}"]`)) {
+        await carregarFeed();
+      }
+      scrollToPost(p.id);
+    });
+
+    noticesList.appendChild(item);
+  });
+}
+
+// ----------------- Eventos (placeholder) -----------------
+function loadEventsView() {
+  if (!eventsList || !eventsEmpty) return;
+  eventsList.innerHTML = "";
+  eventsEmpty.style.display = "";
+}
+
+
 // Atalho: criar aviso fixado (admin)
 btnNewPinned?.addEventListener("click", () => {
   if (currentProfile?.role !== "admin") return;
@@ -690,6 +1137,9 @@ async function init() {
   await carregarFeed();
   await loadPinnedSidebar();
   await loadActivitySidebar();
+
+  setupMenu();
+  await loadNotificationsBadge();
 }
 
 init();
