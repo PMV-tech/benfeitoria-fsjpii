@@ -45,7 +45,7 @@ const likesList = document.getElementById("likesList");
 // Sidebars
 const miniProfileName = document.getElementById("miniProfileName");
 const miniProfileRole = document.getElementById("miniProfileRole");
-const miniAvatar = document.querySelector(\".avatar-mini\");
+const miniAvatar = document.querySelector(".avatar-mini");
 const adminShortcuts = document.getElementById("adminShortcuts");
 const btnNewPinned = document.getElementById("btnNewPinned");
 
@@ -2486,9 +2486,9 @@ async function renderPost(post) {
   author.style.fontSize = "14px";
   author.style.color = "var(--text-primary)";
   author.textContent = post.author_name || profilesMap[post.user_id] || "Usuário";
-  author.style.cursor = \"pointer\";
-  author.title = \"Ver perfil\";
-  author.addEventListener(\"click\", (e) => { e.stopPropagation(); openViewProfileModal(post.user_id); });
+  author.style.cursor = "pointer";
+  author.title = "Ver perfil";
+  author.addEventListener("click", (e) => { e.stopPropagation(); openViewProfileModal(post.user_id); });
 
   const date = document.createElement("div");
   date.style.fontSize = "12px";
@@ -3057,9 +3057,9 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post, c
     meta.style.fontSize = "13px";
     meta.style.color = "var(--text-primary)";
     meta.textContent = `${authorName}  ${fmtDateBR(c.created_at)}`;
-    meta.style.cursor = \"pointer\";
-    meta.title = \"Ver perfil\";
-    meta.addEventListener(\"click\", (e) => { e.stopPropagation(); openViewProfileModal(c.user_id); });
+    meta.style.cursor = "pointer";
+    meta.title = "Ver perfil";
+    meta.addEventListener("click", (e) => { e.stopPropagation(); openViewProfileModal(c.user_id); });
 
     const txt = document.createElement("div");
     txt.style.fontSize = "13px";
