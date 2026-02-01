@@ -975,6 +975,12 @@ async function renderPost(post) {
 
   header.appendChild(left);
 
+  // Container de ações (para manter 📍/📌 ao lado da lixeira)
+  const right = document.createElement("div");
+  right.style.display = "flex";
+  right.style.gap = "8px";
+  right.style.alignItems = "center";
+
   // Ações do post (admin)
   if (isAdmin) {
     // Fixar/desafixar (se suporte disponível)
@@ -1004,7 +1010,7 @@ async function renderPost(post) {
         }
       });
 
-      header.appendChild(pinBtn);
+      right.appendChild(pinBtn);
     }
 
     const delPostBtn = makeIconButton({ title: "Excluir post", variant: "danger" });
@@ -1036,13 +1042,15 @@ async function renderPost(post) {
       }
     });
 
-    header.appendChild(delPostBtn);
+    right.appendChild(delPostBtn);
   } else {
     const spacer = document.createElement("div");
     spacer.style.width = "34px";
     spacer.style.height = "34px";
     header.appendChild(spacer);
   }
+
+  header.appendChild(right);
 
   postEl.appendChild(header);
 
@@ -1885,6 +1893,38 @@ await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments, 
   sendBtn.addEventListener("click", enviarComentarioModal);
 }
 
+
+// Atualiza contagem e preview de comentários de um post específico no FEED (sem recarregar a página)
+async function refreshPostCommentUI(postId) {
+  const postEl = document.querySelector(`.post[data-post-id="${postId}"]`);
+  if (!postEl) return;
+
+  let newCount = null;
+  try {
+    const { count, error } = await supa
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", postId);
+
+    if (error) console.warn("Erro ao contar comentários:", error);
+    newCount = count ?? 0;
+  } catch (e) {
+    console.warn("Falha ao recontar comentários:", e);
+    newCount = null;
+  }
+
+  if (typeof newCount === "number") {
+    const commentsCountSpan = postEl.querySelector(".comments-count");
+    if (commentsCountSpan) commentsCountSpan.textContent = `${newCount} comentários`;
+
+    const ul = postEl.querySelector(".comments ul");
+    const seeMore = postEl.querySelector(".see-more-comments");
+    if (ul && seeMore) {
+      await carregarComentariosRecentes(postId, ul, seeMore, { comments_count: newCount });
+    }
+  }
+}
+
 async function carregarTodosComentarios(postId, container, titleElement, totalComments, options = {}) {
   container.innerHTML = "";
 
@@ -1909,8 +1949,17 @@ if (error) {
     return;
   }
 
-  if (titleElement && data.length !== totalComments) {
-    titleElement.textContent = `Comentários (${data.length})`;
+  if (titleElement) {
+    try {
+      const { count: realTotal, error: cntErr } = await supa
+        .from("comments")
+        .select("*", { count: "exact", head: true })
+        .eq("post_id", postId);
+      if (cntErr) console.warn("Erro ao contar comentários:", cntErr);
+      titleElement.textContent = `Comentários (${(realTotal ?? 0)})`;
+    } catch (e) {
+      titleElement.textContent = `Comentários (${(totalComments ?? data.length)})`;
+    }
   }
 
   for (const c of data) {
@@ -2160,6 +2209,7 @@ if (error) {
                   try {
                     await supa.from("comments").delete().eq("id", r.id);
                     await carregarTodosComentarios(postId, container, titleElement, totalComments, options);
+                    await refreshPostCommentUI(postId);
                   } catch (e) {
                     console.error(e);
                     alert(e?.message || "Erro ao excluir comentário.");
