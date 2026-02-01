@@ -785,19 +785,19 @@ async function fetchNotifications(limit = 50) {
   try {
     const { data } = await supa
       .from("likes")
-      .select("id, created_at, user_id, post_id")
+      .select("created_at, user_id, post_id")
       .in("post_id", myPostIds)
       .neq("user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(limit);
 
     (data || []).forEach((l) => {
-      const key = `like:${l.id}`;
+      const key = `like:${l.user_id}:${l.post_id}:${l.created_at}`;
       if (seen.has(key)) return;
       seen.add(key);
       items.push({
         type: "like",
-        id: l.id,
+        id: key,
         created_at: l.created_at,
         actor_id: l.user_id,
         post_id: l.post_id,
@@ -867,19 +867,19 @@ async function fetchNotifications(limit = 50) {
       try {
         const { data: cl } = await supa
           .from("comment_likes")
-          .select("id, created_at, user_id, comment_id")
+          .select("created_at, user_id, comment_id")
           .in("comment_id", myCommentIds)
           .neq("user_id", currentUser.id)
           .order("created_at", { ascending: false })
           .limit(limit);
 
         (cl || []).forEach((l) => {
-          const key = `comment_like:${l.id}`;
+          const key = `comment_like:${l.user_id}:${l.comment_id}:${l.created_at}`;
           if (seen.has(key)) return;
           seen.add(key);
           items.push({
             type: "comment_like",
-            id: l.id,
+            id: key,
             created_at: l.created_at,
             actor_id: l.user_id,
             post_id: null,
