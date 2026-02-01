@@ -70,7 +70,7 @@ function applyThemeToDynamicElements() {
   document.querySelectorAll(".post-actions button").forEach((btn) => {
     btn.style.color = textColor;
   });
-
+}
 
 // Scrollbar dourada nos modais de comentários (igual ao resto do app)
 function ensureGoldScrollbars() {
@@ -104,8 +104,6 @@ function ensureGoldScrollbars() {
     }
   `;
   document.head.appendChild(style);
-}
-
 }
 
 // ----------------- Helpers UI -----------------
