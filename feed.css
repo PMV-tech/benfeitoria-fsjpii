@@ -1305,3 +1305,106 @@ main#feed {
   box-shadow: 0 0 0 6px rgba(216,177,74,0.12);
   transition: box-shadow .2s ease, outline-color .2s ease;
 }
+
+
+/* ===================== VIEWS (Menu) ===================== */
+.main-content{
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 18px 10px 120px;
+}
+
+.view{ display:none; }
+.view.view-active{ display:block; }
+
+.view-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  box-shadow: 0 10px 30px var(--shadow-color);
+}
+.view-header h3{
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+.view-action{
+  border: 1px solid var(--border-color);
+  background: var(--button-bg);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.view-action:hover{ background: var(--button-hover); }
+
+.side-badge{
+  display:inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items:center;
+  justify-content:center;
+  padding: 0 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  background: rgba(212, 175, 55, 0.95);
+  color: #111;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.view-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.view-item{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  cursor:pointer;
+}
+.view-item:hover{ background: var(--button-hover); }
+
+.view-item .vi-avatar{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--accent-gradient);
+  flex: 0 0 36px;
+}
+.view-item .vi-main{ flex: 1; min-width: 0; }
+.view-item .vi-title{
+  font-weight: 900;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.view-item .vi-sub{
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.view-item .vi-meta{
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+.view-item.unread{
+  border-color: rgba(212,175,55,0.55);
+}
