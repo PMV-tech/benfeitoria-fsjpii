@@ -2164,9 +2164,16 @@ function initRealtime() {
 
 
 async function init() {
-  const {
-    data: { session },
-  } = await supa.auth.getSession();
+  let session = null;
+  try {
+    const { data, error } = await supa.auth.getSession();
+    if (error) throw error;
+    session = data?.session || null;
+  } catch (e) {
+    console.error(e);
+    alert("Não foi possível conectar ao Supabase (sessão). Verifique sua internet/VPN e as credenciais do Supabase.");
+    return;
+  }
 
   if (!session) {
     window.location.href = "index.html";
@@ -2177,15 +2184,32 @@ async function init() {
 
   cleanupNotifExpire();
 
-  const { data: profile, error } = await supa
-    .from("profiles")
-    .select("id, role, full_name, bio, avatar_url")
-    .eq("id", currentUser.id)
-    .single();
+  // Carrega perfil com fallback caso colunas opcionais (bio/avatar_url) não existam ainda
+  let profile = null;
+  try {
+    let res = await supa
+      .from("profiles")
+      .select("id, role, full_name, bio, avatar_url")
+      .eq("id", currentUser.id)
+      .single();
 
-  if (error) {
-    console.error(error);
-    alert("Erro ao carregar perfil.");
+    if (res.error) {
+      const msg = String(res.error?.message || "");
+      const det = String(res.error?.details || "");
+      if (msg.includes("does not exist") || det.includes("does not exist") || msg.includes("column") || det.includes("column")) {
+        res = await supa
+          .from("profiles")
+          .select("id, role, full_name")
+          .eq("id", currentUser.id)
+          .single();
+      }
+    }
+
+    if (res.error) throw res.error;
+    profile = res.data;
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao carregar perfil. Se você ainda não criou bio/avatar_url, rode o SQL das colunas opcionais — ou verifique RLS/permissões.");
     return;
   }
 
