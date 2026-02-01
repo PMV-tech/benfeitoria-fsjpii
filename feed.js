@@ -641,7 +641,6 @@ btnNewPinned?.addEventListener("click", () => {
   if (currentProfile?.role !== "admin") return;
   forcePinOnPublish = true;
   pendingFile = null;
-  forcePinOnPublish = false;
   // abre modal sem imagem, sem prévia
   if (previewWrap) previewWrap.style.display = "none";
   if (previewImg) { previewImg.removeAttribute("src"); previewImg.src = ""; }
@@ -699,33 +698,18 @@ init();
 async function carregarFeed() {
   feed.innerHTML = "";
 
-  // carrega feed (view) + tenta ordenar por pinned se existir
-  let postsRes;
-  if (hasPinnedColumn) {
-    postsRes = await supa
-      .from("v_feed")
-      .select("*")
-      .order("pinned", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(50);
+  // Carrega posts direto da tabela (evita depender de views como v_feed)
+  let query = supa
+    .from("posts")
+    .select("id, user_id, caption, image_url, created_at" + (hasPinnedColumn ? ", pinned" : ""));
 
-    // se a view não tiver a coluna pinned, faz fallback
-    if (postsRes.error) {
-      postsRes = await supa
-        .from("v_feed")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(50);
-    }
+  if (hasPinnedColumn) {
+    query = query.order("pinned", { ascending: false }).order("created_at", { ascending: false });
   } else {
-    postsRes = await supa
-      .from("v_feed")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
+    query = query.order("created_at", { ascending: false });
   }
 
-  const { data: posts, error } = postsRes;
+  const { data: posts, error } = await query.limit(50);
 
   if (error) {
     console.error(error);
@@ -733,10 +717,10 @@ async function carregarFeed() {
     return;
   }
 
-  // buscar nomes para o author_name (caso a view não traga)
+  // Carrega nomes (profiles) para autores presentes na lista
   const userIds = [...new Set((posts || []).map((p) => p.user_id).filter(Boolean))];
-
   profilesMap = {};
+
   if (userIds.length) {
     const { data: profs, error: profErr } = await supa
       .from("profiles")
@@ -750,37 +734,30 @@ async function carregarFeed() {
     }
   }
 
-  // Se a view não retornar 'pinned', tentamos buscar na tabela posts (uma única vez)
-  if (hasPinnedColumn && Array.isArray(posts) && posts.length) {
-    try {
-      const ids = posts.map((p) => p.id).filter(Boolean);
-      const { data: pinRows, error: pinErr } = await supa
-        .from("posts")
-        .select("id, pinned")
-        .in("id", ids);
-
-      if (!pinErr && Array.isArray(pinRows)) {
-        const pinnedMap = Object.fromEntries(pinRows.map((r) => [r.id, !!r.pinned]));
-        posts.forEach((p) => {
-          if (typeof p.pinned === "undefined") p.pinned = pinnedMap[p.id] || false;
-        });
-      }
-    } catch (e) {
-      // ignora
-    }
-  }
-
+  // Prepara posts com contagens (likes/comments) antes de renderizar
   for (const post of posts || []) {
-    const nameFromProfiles = profilesMap[post.user_id];
-    if (!post.author_name && nameFromProfiles) post.author_name = nameFromProfiles;
+    post.author_name = post.author_name || profilesMap[post.user_id] || "Usuário";
+
+    // Curtidas
+    const { count: likesCount } = await supa
+      .from("likes")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id);
+
+    // Comentários
+    const { count: commentsCount } = await supa
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id);
+
+    post.likes_count = likesCount ?? 0;
+    post.comments_count = commentsCount ?? 0;
 
     const card = await renderPost(post);
     feed.appendChild(card);
   }
 
   applyThemeToDynamicElements();
-  loadPinnedSidebar().catch(() => {});
-  loadActivitySidebar().catch(() => {});
 }
 
 function fmtDateBR(isoString) {
@@ -1016,6 +993,11 @@ async function renderPost(post) {
           post.pinned = next;
           await carregarFeed();
           await loadPinnedSidebar();
+          // Leva o post fixado para o topo/visível
+          setTimeout(() => {
+            const el = document.querySelector(`.post[data-post-id="${post.id}"]`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
         } catch (e) {
           console.error(e);
           alert(e?.message || "Erro ao fixar/desafixar.");
@@ -2327,23 +2309,42 @@ publishPost?.addEventListener("click", async () => {
 
       if (upErr) throw upErr;
 
-      const { error: insErr } = await supa
+      const { data: insertedPost, error: insErr } = await supa
         .from("posts")
-        .insert({ user_id: currentUser.id, caption, image_url: filePath, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) });
+        .insert({ user_id: currentUser.id, caption, image_url: filePath, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) })
+        .select("id")
+        .single();
 
       if (insErr) throw insErr;
+      var insertedId = insertedPost?.id;
     }
     // SEM IMAGEM
     else {
-      const { error: insErr } = await supa
+      const { data: insertedPost, error: insErr } = await supa
         .from("posts")
-        .insert({ user_id: currentUser.id, caption, image_url: null, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) });
+        .insert({ user_id: currentUser.id, caption, image_url: null, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) })
+        .select("id")
+        .single();
 
       if (insErr) throw insErr;
+      var insertedId = insertedPost?.id;
     }
+
+    const justInsertedId = typeof insertedId !== "undefined" ? insertedId : null;
+    const wasPinned = forcePinOnPublish && hasPinnedColumn;
 
     fecharModal();
     await carregarFeed();
+    // Atualiza sidebars (evita corrida/duplicação: chamamos só aqui)
+    await loadPinnedSidebar().catch(() => {});
+    await loadActivitySidebar().catch(() => {});
+
+    if (justInsertedId) {
+      setTimeout(() => {
+        const el = document.querySelector(`.post[data-post-id="${justInsertedId}"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: wasPinned ? "start" : "center" });
+      }, 120);
+    }
   } catch (e) {
     console.error(e);
     alert(e?.message || "Erro ao postar.");
