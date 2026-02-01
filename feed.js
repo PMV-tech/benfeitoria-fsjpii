@@ -53,6 +53,9 @@ let editingCommentId = null;
 // Map de perfis (para nome de autor)
 let profilesMap = {}; // id -> full_name
 
+// Quantos comentários aparecem no feed antes do botão "ver mais"
+const COMMENT_PREVIEW_LIMIT = 2;
+
 // ----------------- TEMA -----------------
 function applyThemeToDynamicElements() {
   const isDarkMode = document.documentElement.getAttribute("data-theme") === "dark";
@@ -67,6 +70,42 @@ function applyThemeToDynamicElements() {
   document.querySelectorAll(".post-actions button").forEach((btn) => {
     btn.style.color = textColor;
   });
+
+
+// Scrollbar dourada nos modais de comentários (igual ao resto do app)
+function ensureGoldScrollbars() {
+  if (document.getElementById("goldScrollbars")) return;
+
+  const style = document.createElement("style");
+  style.id = "goldScrollbars";
+  style.textContent = `
+    /* WebKit */
+    .comments-modal-card .comments-modal-list::-webkit-scrollbar {
+      width: 10px;
+    }
+    .comments-modal-card .comments-modal-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .comments-modal-card .comments-modal-list::-webkit-scrollbar-thumb {
+      background: rgba(212, 175, 55, 0.55);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .comments-modal-card .comments-modal-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(212, 175, 55, 0.75);
+      background-clip: content-box;
+    }
+
+    /* Firefox */
+    .comments-modal-card .comments-modal-list {
+      scrollbar-color: rgba(212, 175, 55, 0.65) transparent;
+      scrollbar-width: thin;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 }
 
 // ----------------- Helpers UI -----------------
@@ -1043,7 +1082,7 @@ async function renderPost(post) {
   return postEl;
 }
 
-// Função para carregar apenas 3 comentários MAIS RECENTES
+// Função para carregar apenas comentários MAIS RECENTES (preview no feed)
 async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
   ul.innerHTML = "";
 
@@ -1052,7 +1091,7 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
     .select("id, content, created_at, user_id, profiles:profiles(full_name)")
     .eq("post_id", postId)
     .order("created_at", { ascending: false })
-    .limit(3);
+    .limit(COMMENT_PREVIEW_LIMIT);
 
   if (error) {
     console.error(error);
@@ -1062,7 +1101,7 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
   const commentsToShow = data || [];
   const isAdmin = currentProfile?.role === "admin";
 
-  if (post.comments_count > 3) {
+  if (post.comments_count > COMMENT_PREVIEW_LIMIT) {
     seeMoreContainer.style.display = "block";
   } else {
     seeMoreContainer.style.display = "none";
@@ -1115,18 +1154,23 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
           const { error } = await supa.from("comments").delete().eq("id", c.id);
           if (error) throw error;
 
-          post.comments_count = Math.max(0, post.comments_count - 1);
+          // Re-sincroniza a contagem e o preview (evita "perder" comentários antigos)
+          const { count: newCount, error: cntErr } = await supa
+            .from("comments")
+            .select("*", { count: "exact", head: true })
+            .eq("post_id", postId);
+
+          if (cntErr) console.warn("Erro ao contar comentários:", cntErr);
+
+          post.comments_count = newCount ?? Math.max(0, post.comments_count - 1);
+
           const commentsCountSpan = ul.closest(".post")?.querySelector(".comments-count");
           if (commentsCountSpan) {
             commentsCountSpan.textContent =
               post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
           }
 
-          li.remove();
-
-          if (post.comments_count <= 3) {
-            seeMoreContainer.style.display = "none";
-          }
+          await carregarComentariosRecentes(postId, ul, seeMoreContainer, post);
         } catch (e) {
           console.error(e);
           alert(e?.message || "Erro ao excluir comentário.");
@@ -1223,7 +1267,10 @@ async function abrirModalComentarios(postId, totalComments) {
   modalHeader.appendChild(modalTitle);
   modalHeader.appendChild(closeBtn);
 
+  ensureGoldScrollbars();
+
   const commentsList = document.createElement("div");
+  commentsList.className = "comments-modal-list";
   commentsList.style.flex = "1";
   commentsList.style.overflowY = "auto";
   commentsList.style.padding = "20px";
@@ -1312,7 +1359,7 @@ async function abrirModalComentarios(postId, totalComments) {
             totalComments + (totalComments === 1 ? " comentário" : " comentários");
         }
         const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-        if (seeMoreContainer && totalComments > 3) {
+        if (seeMoreContainer && totalComments > COMMENT_PREVIEW_LIMIT) {
           seeMoreContainer.style.display = "block";
         }
       }
@@ -1427,25 +1474,39 @@ async function carregarTodosComentarios(postId, container, titleElement, totalCo
           const { error } = await supa.from("comments").delete().eq("id", c.id);
           if (error) throw error;
 
-          commentDiv.remove();
+          // Re-sincroniza a contagem real no banco e atualiza UI (modal + feed)
+          const { count: newCount, error: cntErr } = await supa
+            .from("comments")
+            .select("*", { count: "exact", head: true })
+            .eq("post_id", postId);
 
-          const currentCount = parseInt(titleElement.textContent.match(/\d+/)[0], 10);
-          titleElement.textContent = `Comentários (${currentCount - 1})`;
+          if (cntErr) console.warn("Erro ao contar comentários:", cntErr);
+
+          const safeCount = newCount ?? Math.max(0, parseInt(titleElement.textContent.match(/\d+/)[0], 10) - 1);
+          titleElement.textContent = `Comentários (${safeCount})`;
 
           const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
           if (postElement) {
             const commentsCountSpan = postElement.querySelector(".comments-count");
             if (commentsCountSpan) {
-              const newCount = currentCount - 1;
               commentsCountSpan.textContent =
-                newCount + (newCount === 1 ? " comentário" : " comentários");
+                safeCount + (safeCount === 1 ? " comentário" : " comentários");
             }
 
             const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-            if (seeMoreContainer && currentCount - 1 <= 3) {
-              seeMoreContainer.style.display = "none";
+            if (seeMoreContainer) {
+              seeMoreContainer.style.display = safeCount > COMMENT_PREVIEW_LIMIT ? "block" : "none";
+            }
+
+            // Atualiza o preview do feed também (para não ficar "perdido")
+            const ul = postElement.querySelector(".comments ul");
+            if (ul && seeMoreContainer) {
+              await carregarComentariosRecentes(postId, ul, seeMoreContainer, { comments_count: safeCount });
             }
           }
+
+          // Recarrega a lista do modal para manter consistência visual
+          await carregarTodosComentarios(postId, container, titleElement, safeCount);
         } catch (e) {
           console.error(e);
           alert(e?.message || "Erro ao excluir comentário.");
