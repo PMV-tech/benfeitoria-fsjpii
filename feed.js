@@ -106,6 +106,22 @@ let hasPinnedColumn = true;
 // Map de perfis (para nome de autor)
 let profilesMap = {}; // id -> full_name
 
+// Carrega nomes de perfis para uma lista de user_ids (sem depender de FK/joins do PostgREST)
+async function hydrateProfiles(userIds) {
+  try {
+    const ids = Array.from(new Set((userIds || []).filter(Boolean)));
+    const missing = ids.filter((id) => !profilesMap[id]);
+    if (!missing.length) return;
+
+    const { data, error } = await supa.from("profiles").select("id, full_name").in("id", missing);
+    if (error) return;
+    (data || []).forEach((p) => {
+      profilesMap[p.id] = p.full_name || "Usuário";
+    });
+  } catch (_) {}
+}
+
+
 // Quantos comentários aparecem no feed antes do botão "ver mais"
 const COMMENT_PREVIEW_LIMIT = 2;
 
@@ -416,15 +432,7 @@ async function abrirModalCurtidas(postId, postEl = null) {
   try {
     const { data: likes, error } = await supa
       .from("likes")
-      .select(
-        `
-        created_at,
-        user_id,
-        profiles:profiles (
-          full_name
-        )
-      `
-      )
+      .select("created_at, user_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: false });
 
@@ -455,6 +463,8 @@ async function abrirModalCurtidas(postId, postEl = null) {
       return;
     }
 
+    await hydrateProfiles((likes||[]).map(l=>l.user_id));
+
     const header = document.createElement("div");
     header.className = "likes-count-header";
     header.textContent = `${likes.length} ${likes.length === 1 ? "curtida" : "curtidas"}`;
@@ -462,60 +472,40 @@ async function abrirModalCurtidas(postId, postEl = null) {
     const usersList = document.createElement("div");
 
     likes.forEach((like) => {
-      const userDiv = document.createElement("div");
-      userDiv.className = "like-user";
+  const userDiv = document.createElement("div");
+  userDiv.className = "like-user";
 
-      const avatarDiv = document.createElement("div");
-      avatarDiv.className = "like-user-avatar";
+  const avatarDiv = document.createElement("div");
+  avatarDiv.className = "like-user-avatar";
 
-      let userName = "Usuário";
-      let initials = "U";
-      const isCurrentUser = like.user_id === currentUser?.id;
+  const isCurrentUser = like.user_id === currentUser?.id;
+  let userName =
+    (isCurrentUser ? currentProfile?.full_name : profilesMap[like.user_id]) || "Usuário";
 
-      if (like.profiles && like.profiles.full_name) {
-        userName = like.profiles.full_name;
-        initials = userName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-      } else if (isCurrentUser && currentProfile?.full_name) {
-        userName = currentProfile.full_name;
-        initials = userName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-      } else {
-        userName = "Usuário";
-        initials = "U";
-      }
+  if (isCurrentUser) userName += " (Você)";
 
-      if (isCurrentUser) userName += " (Você)";
+  avatarDiv.textContent = mkAvatarInitials(userName);
+  avatarDiv.title = userName;
 
-      avatarDiv.textContent = initials;
-      avatarDiv.title = userName;
+  const infoDiv = document.createElement("div");
 
-      const infoDiv = document.createElement("div");
+  const nameDiv = document.createElement("div");
+  nameDiv.className = "like-user-name";
+  nameDiv.textContent = userName;
 
-      const nameDiv = document.createElement("div");
-      nameDiv.className = "like-user-name";
-      nameDiv.textContent = userName;
+  const dateDiv = document.createElement("div");
+  dateDiv.className = "like-user-date";
+  dateDiv.textContent = `Curtiu em ${fmtDateBR(like.created_at)}`;
 
-      const dateDiv = document.createElement("div");
-      dateDiv.className = "like-user-date";
-      dateDiv.textContent = `Curtiu em ${fmtDateBR(like.created_at)}`;
+  infoDiv.appendChild(nameDiv);
+  infoDiv.appendChild(dateDiv);
 
-      infoDiv.appendChild(nameDiv);
-      infoDiv.appendChild(dateDiv);
+  userDiv.appendChild(avatarDiv);
+  userDiv.appendChild(infoDiv);
 
-      userDiv.appendChild(avatarDiv);
-      userDiv.appendChild(infoDiv);
-
-      usersList.appendChild(userDiv);
-    });
+  usersList.appendChild(userDiv);
+});
+;
 
     likesList.innerHTML = "";
     likesList.appendChild(header);
@@ -590,6 +580,8 @@ async function loadPinnedSidebar() {
     return;
   }
 
+  await hydrateProfiles(list.map((c) => c.user_id));
+
   list.forEach((p) => {
     const item = document.createElement("div");
     item.className = "side-item";
@@ -628,6 +620,7 @@ async function loadActivitySidebar() {
   const { data, error } = await supa
     .from("comments")
     .select("id, post_id, user_id, content, created_at")
+    .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
     .order("created_at", { ascending: false })
     .limit(8);
 
@@ -792,7 +785,7 @@ async function fetchNotifications(limit = 50) {
   try {
     const { data } = await supa
       .from("likes")
-      .select("id, created_at, user_id, post_id, profiles(full_name)")
+      .select("id, created_at, user_id, post_id")
       .in("post_id", myPostIds)
       .neq("user_id", currentUser.id)
       .order("created_at", { ascending: false })
@@ -806,7 +799,7 @@ async function fetchNotifications(limit = 50) {
         type: "like",
         id: l.id,
         created_at: l.created_at,
-        actor: l.profiles?.full_name || "Usuário",
+        actor_id: l.user_id,
         post_id: l.post_id,
       });
     });
@@ -816,7 +809,7 @@ async function fetchNotifications(limit = 50) {
   try {
     const { data } = await supa
       .from("comments")
-      .select("id, created_at, user_id, post_id, parent_comment_id, content, profiles:profiles(full_name)")
+      .select("id, created_at, user_id, post_id, parent_comment_id, content")
       .in("post_id", myPostIds)
       .neq("user_id", currentUser.id)
       .order("created_at", { ascending: false })
@@ -830,7 +823,7 @@ async function fetchNotifications(limit = 50) {
         type: c.parent_comment_id ? "reply_on_post" : "comment",
         id: c.id,
         created_at: c.created_at,
-        actor: c.profiles?.full_name || "Usuário",
+        actor_id: c.user_id,
         post_id: c.post_id,
         text: c.content || "",
       });
@@ -850,7 +843,7 @@ async function fetchNotifications(limit = 50) {
     if (myCommentIds.length) {
       const { data } = await supa
         .from("comments")
-        .select("id, created_at, user_id, post_id, parent_comment_id, content, profiles:profiles(full_name)")
+        .select("id, created_at, user_id, post_id, parent_comment_id, content")
         .in("parent_comment_id", myCommentIds)
         .neq("user_id", currentUser.id)
         .order("created_at", { ascending: false })
@@ -864,7 +857,7 @@ async function fetchNotifications(limit = 50) {
           type: "reply",
           id: c.id,
           created_at: c.created_at,
-          actor: c.profiles?.full_name || "Usuário",
+          actor_id: c.user_id,
           post_id: c.post_id,
           text: c.content || "",
         });
@@ -874,7 +867,7 @@ async function fetchNotifications(limit = 50) {
       try {
         const { data: cl } = await supa
           .from("comment_likes")
-          .select("id, created_at, user_id, comment_id, profiles:profiles(full_name)")
+          .select("id, created_at, user_id, comment_id")
           .in("comment_id", myCommentIds)
           .neq("user_id", currentUser.id)
           .order("created_at", { ascending: false })
@@ -888,7 +881,7 @@ async function fetchNotifications(limit = 50) {
             type: "comment_like",
             id: l.id,
             created_at: l.created_at,
-            actor: l.profiles?.full_name || "Usuário",
+            actor_id: l.user_id,
             post_id: null,
             comment_id: l.comment_id,
           });
@@ -899,6 +892,12 @@ async function fetchNotifications(limit = 50) {
 
   // Ordena por data
   items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  await hydrateProfiles(items.map((x) => x.actor_id));
+  items.forEach((x) => {
+    if (!x.actor) x.actor = profilesMap[x.actor_id] || "Usuário";
+  });
+
   return items.slice(0, limit);
 }
 
@@ -1231,7 +1230,7 @@ async function safeSelectTopLevelComments(postId, ascending, limit) {
   // tenta com parent_comment_id; se a coluna não existir, cai para "tudo"
   let q = supa
     .from("comments")
-    .select("id, content, created_at, user_id, parent_comment_id, profiles:profiles(full_name)")
+    .select("id, content, created_at, user_id, parent_comment_id")
     .eq("post_id", postId);
 
   try {
@@ -1246,7 +1245,7 @@ async function safeSelectTopLevelComments(postId, ascending, limit) {
     // retry sem parent_comment_id
     const retry = await supa
       .from("comments")
-      .select("id, content, created_at, user_id, profiles:profiles(full_name)")
+      .select("id, content, created_at, user_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: !!ascending })
       .limit(typeof limit === "number" ? limit : 1000);
@@ -1255,6 +1254,7 @@ async function safeSelectTopLevelComments(postId, ascending, limit) {
   }
 
   if (error) throw error;
+  await hydrateProfiles((data || []).map((x) => x.user_id));
   return data || [];
 }
 
@@ -1275,7 +1275,7 @@ async function safeFetchReplies(rootCommentId) {
   try {
     const { data, error } = await supa
       .from("comments")
-      .select("id, content, created_at, user_id, parent_comment_id, profiles:profiles(full_name)")
+      .select("id, content, created_at, user_id, parent_comment_id")
       .eq("parent_comment_id", rootCommentId)
       .order("created_at", { ascending: true });
     if (error) throw error;
@@ -1449,6 +1449,7 @@ async function renderPost(post) {
           post.pinned = next;
           await carregarFeed();
           await loadPinnedSidebar();
+          if (viewNotices?.classList.contains("view-active")) await loadNoticesView();
           // Leva o post fixado para o topo/visível
           setTimeout(() => {
             const el = document.querySelector(`.post[data-post-id="${post.id}"]`);
@@ -1974,7 +1975,7 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post, c
     left.style.gap = "2px";
     left.style.flex = "1";
 
-    const authorName = (c.profiles?.full_name || "Usuário").trim();
+    const authorName = ((c.user_id === currentUser?.id ? currentProfile?.full_name : profilesMap[c.user_id]) || "Usuário").trim();
 
     const meta = document.createElement("div");
     meta.style.fontWeight = "800";
@@ -2417,7 +2418,7 @@ if (error) {
     commentDiv.style.padding = "12px 0";
     commentDiv.style.borderBottom = "1px solid var(--border-light)";
 
-    const authorName = (c.profiles?.full_name || "Usuário").trim();
+    const authorName = ((c.user_id === currentUser?.id ? currentProfile?.full_name : profilesMap[c.user_id]) || "Usuário").trim();
 
     const meta = document.createElement("div");
     meta.style.display = "flex";
@@ -2602,7 +2603,7 @@ if (error) {
               row.style.padding = "10px 0";
               row.style.borderBottom = "1px solid var(--border-light)";
 
-              const rAuthor = (r.profiles?.full_name || "Usuário").trim();
+              const rAuthor = ((r.user_id === currentUser?.id ? currentProfile?.full_name : profilesMap[r.user_id]) || "Usuário").trim();
 
               const rMeta = document.createElement("div");
               rMeta.style.display = "flex";
@@ -2837,6 +2838,7 @@ publishPost?.addEventListener("click", async () => {
     await carregarFeed();
     // Atualiza sidebars (evita corrida/duplicação: chamamos só aqui)
     await loadPinnedSidebar().catch(() => {});
+    if (viewNotices?.classList.contains("view-active")) await loadNoticesView().catch(() => {});
     await loadActivitySidebar().catch(() => {});
 
     if (justInsertedId) {
