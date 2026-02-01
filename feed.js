@@ -45,6 +45,7 @@ const likesList = document.getElementById("likesList");
 // Sidebars
 const miniProfileName = document.getElementById("miniProfileName");
 const miniProfileRole = document.getElementById("miniProfileRole");
+const miniAvatar = document.querySelector(\".avatar-mini\");
 const adminShortcuts = document.getElementById("adminShortcuts");
 const btnNewPinned = document.getElementById("btnNewPinned");
 
@@ -132,6 +133,419 @@ async function hydrateProfiles(userIds) {
       profilesMap[p.id] = p.full_name || "Usuário";
     });
   } catch (_) {}
+}
+
+// ----------------- Perfis (avatar/bio + modais) -----------------
+const AVATAR_BUCKET = "avatars"; // crie um bucket público 'avatars' no Supabase Storage
+
+function getAvatarPublicUrl(path) {
+  if (!path) return "";
+  try {
+    return supa.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function setMiniProfileUI() {
+  if (!currentProfile) return;
+  if (miniProfileName) miniProfileName.textContent = currentProfile.full_name || "Usuário";
+  if (miniProfileRole) miniProfileRole.textContent = currentProfile.role || "membro";
+
+  // avatar
+  if (miniAvatar) {
+    const url = currentProfile.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
+    if (url) {
+      miniAvatar.style.backgroundImage = `url('${url}')`;
+      miniAvatar.style.backgroundSize = "cover";
+      miniAvatar.style.backgroundPosition = "center";
+      miniAvatar.textContent = "";
+    } else {
+      miniAvatar.style.backgroundImage = "";
+      miniAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
+    }
+  }
+}
+
+let editProfileModalEl = null;
+let viewProfileModalEl = null;
+
+function ensureEditProfileModal() {
+  if (editProfileModalEl) return editProfileModalEl;
+
+  editProfileModalEl = document.createElement("div");
+  editProfileModalEl.className = "modal";
+  editProfileModalEl.style.display = "none";
+
+  const card = document.createElement("div");
+  card.className = "modal-card";
+  card.style.maxWidth = "520px";
+
+  const header = document.createElement("div");
+  header.style.display = "flex";
+  header.style.alignItems = "center";
+  header.style.justifyContent = "space-between";
+  header.style.gap = "10px";
+
+  const title = document.createElement("div");
+  title.textContent = "Editar perfil";
+  title.style.fontSize = "18px";
+  title.style.fontWeight = "900";
+  title.style.color = "var(--text-primary)";
+
+  const close = makeIconButton({ title: "Fechar", icon: "x" });
+  close.addEventListener("click", () => closeEditProfileModal());
+
+  header.appendChild(title);
+  header.appendChild(close);
+
+  const form = document.createElement("div");
+  form.style.marginTop = "12px";
+  form.style.display = "flex";
+  form.style.flexDirection = "column";
+  form.style.gap = "10px";
+
+  const nameLabel = document.createElement("div");
+  nameLabel.textContent = "Nome";
+  nameLabel.style.fontWeight = "800";
+  nameLabel.style.color = "var(--text-primary)";
+  nameLabel.style.fontSize = "13px";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.id = "editProfileName";
+  nameInput.placeholder = "Seu nome";
+  nameInput.style.padding = "10px 12px";
+  nameInput.style.borderRadius = "12px";
+  nameInput.style.border = "1px solid var(--border-color)";
+  nameInput.style.background = "var(--bg-secondary)";
+  nameInput.style.color = "var(--text-primary)";
+
+  const bioLabel = document.createElement("div");
+  bioLabel.textContent = "Bio";
+  bioLabel.style.fontWeight = "800";
+  bioLabel.style.color = "var(--text-primary)";
+  bioLabel.style.fontSize = "13px";
+  bioLabel.style.marginTop = "6px";
+
+  const bioInput = document.createElement("textarea");
+  bioInput.id = "editProfileBio";
+  bioInput.placeholder = "Uma frase sobre você…";
+  bioInput.rows = 3;
+  bioInput.style.padding = "10px 12px";
+  bioInput.style.borderRadius = "12px";
+  bioInput.style.border = "1px solid var(--border-color)";
+  bioInput.style.background = "var(--bg-secondary)";
+  bioInput.style.color = "var(--text-primary)";
+  bioInput.style.resize = "vertical";
+
+  const photoLabel = document.createElement("div");
+  photoLabel.textContent = "Foto";
+  photoLabel.style.fontWeight = "800";
+  photoLabel.style.color = "var(--text-primary)";
+  photoLabel.style.fontSize = "13px";
+  photoLabel.style.marginTop = "6px";
+
+  const row = document.createElement("div");
+  row.style.display = "flex";
+  row.style.gap = "10px";
+  row.style.alignItems = "center";
+
+  const photoPreview = document.createElement("div");
+  photoPreview.style.width = "56px";
+  photoPreview.style.height = "56px";
+  photoPreview.style.borderRadius = "16px";
+  photoPreview.style.border = "1px solid var(--border-color)";
+  photoPreview.style.background = "rgba(255,255,255,0.06)";
+  photoPreview.style.display = "flex";
+  photoPreview.style.alignItems = "center";
+  photoPreview.style.justifyContent = "center";
+  photoPreview.style.fontWeight = "900";
+  photoPreview.style.color = "var(--text-primary)";
+  photoPreview.textContent = "🙂";
+
+  const file = document.createElement("input");
+  file.type = "file";
+  file.accept = "image/*";
+  file.id = "editProfileAvatar";
+  file.style.flex = "1";
+  file.style.color = "var(--text-primary)";
+
+  let pendingAvatarFile = null;
+
+  file.addEventListener("change", () => {
+    const f = file.files?.[0];
+    if (!f) return;
+    pendingAvatarFile = f;
+    const r = new FileReader();
+    r.onload = () => {
+      photoPreview.style.backgroundImage = `url('${r.result}')`;
+      photoPreview.style.backgroundSize = "cover";
+      photoPreview.style.backgroundPosition = "center";
+      photoPreview.textContent = "";
+    };
+    r.readAsDataURL(f);
+  });
+
+  row.appendChild(photoPreview);
+  row.appendChild(file);
+
+  const actions = document.createElement("div");
+  actions.style.display = "flex";
+  actions.style.gap = "10px";
+  actions.style.justifyContent = "flex-end";
+  actions.style.marginTop = "10px";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancelar";
+  cancel.className = "btn-secondary";
+  cancel.addEventListener("click", () => closeEditProfileModal());
+
+  const save = document.createElement("button");
+  save.type = "button";
+  save.textContent = "Salvar";
+  save.className = "btn-primary";
+
+  save.addEventListener("click", async () => {
+    if (!currentUser) return;
+    save.disabled = true;
+    save.style.opacity = "0.7";
+    try {
+      const full_name = nameInput.value.trim();
+      const bio = bioInput.value.trim();
+
+      let avatar_url = currentProfile?.avatar_url || null;
+
+      if (pendingAvatarFile) {
+        const ext = (pendingAvatarFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${currentUser.id}/avatar.${ext}`;
+        const up = await supa.storage.from(AVATAR_BUCKET).upload(path, pendingAvatarFile, { upsert: true });
+        if (up.error) throw up.error;
+        avatar_url = path;
+      }
+
+      const { error } = await supa
+        .from("profiles")
+        .update({ full_name: full_name || currentProfile.full_name, bio, avatar_url })
+        .eq("id", currentUser.id);
+
+      if (error) throw error;
+
+      // refresh local profile
+      currentProfile.full_name = full_name || currentProfile.full_name;
+      currentProfile.bio = bio;
+      currentProfile.avatar_url = avatar_url;
+
+      setMiniProfileUI();
+
+      // re-hidrata map
+      profilesMap[currentUser.id] = currentProfile.full_name || "Usuário";
+
+      closeEditProfileModal();
+      await carregarFeed();
+      await loadPinnedSidebar();
+      await loadNoticesView();
+      await loadNotificationsView();
+      await loadNotificationsBadge();
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || "Erro ao salvar perfil. Confirme se existe o bucket 'avatars' e as colunas avatar_url/bio em profiles.");
+    } finally {
+      save.disabled = false;
+      save.style.opacity = "1";
+    }
+  });
+
+  actions.appendChild(cancel);
+  actions.appendChild(save);
+
+  form.appendChild(nameLabel);
+  form.appendChild(nameInput);
+  form.appendChild(bioLabel);
+  form.appendChild(bioInput);
+  form.appendChild(photoLabel);
+  form.appendChild(row);
+  form.appendChild(actions);
+
+  card.appendChild(header);
+  card.appendChild(form);
+  editProfileModalEl.appendChild(card);
+  document.body.appendChild(editProfileModalEl);
+
+  editProfileModalEl.addEventListener("click", (e) => {
+    if (e.target === editProfileModalEl) closeEditProfileModal();
+  });
+
+  // preencher com dados atuais quando abrir
+  editProfileModalEl._fill = () => {
+    nameInput.value = currentProfile?.full_name || "";
+    bioInput.value = currentProfile?.bio || "";
+    pendingAvatarFile = null;
+    file.value = "";
+    const url = currentProfile?.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
+    if (url) {
+      photoPreview.style.backgroundImage = `url('${url}')`;
+      photoPreview.style.backgroundSize = "cover";
+      photoPreview.style.backgroundPosition = "center";
+      photoPreview.textContent = "";
+    } else {
+      photoPreview.style.backgroundImage = "";
+      photoPreview.textContent = mkAvatarInitials(currentProfile?.full_name || "Usuário");
+    }
+  };
+
+  return editProfileModalEl;
+}
+
+function openEditProfileModal() {
+  ensureEditProfileModal();
+  if (typeof editProfileModalEl._fill === "function") editProfileModalEl._fill();
+  editProfileModalEl.style.display = "flex";
+  editProfileModalEl.setAttribute("aria-hidden", "false");
+}
+
+function closeEditProfileModal() {
+  if (!editProfileModalEl) return;
+  editProfileModalEl.style.display = "none";
+  editProfileModalEl.setAttribute("aria-hidden", "true");
+}
+
+function ensureViewProfileModal() {
+  if (viewProfileModalEl) return viewProfileModalEl;
+
+  viewProfileModalEl = document.createElement("div");
+  viewProfileModalEl.className = "modal";
+  viewProfileModalEl.style.display = "none";
+
+  const card = document.createElement("div");
+  card.className = "modal-card";
+  card.style.maxWidth = "520px";
+
+  const header = document.createElement("div");
+  header.style.display = "flex";
+  header.style.alignItems = "center";
+  header.style.justifyContent = "space-between";
+
+  const title = document.createElement("div");
+  title.textContent = "Perfil";
+  title.style.fontSize = "18px";
+  title.style.fontWeight = "900";
+  title.style.color = "var(--text-primary)";
+
+  const close = makeIconButton({ title: "Fechar", icon: "x" });
+  close.addEventListener("click", () => closeViewProfileModal());
+
+  header.appendChild(title);
+  header.appendChild(close);
+
+  const body = document.createElement("div");
+  body.id = "viewProfileBody";
+  body.style.marginTop = "12px";
+
+  card.appendChild(header);
+  card.appendChild(body);
+  viewProfileModalEl.appendChild(card);
+  document.body.appendChild(viewProfileModalEl);
+
+  viewProfileModalEl.addEventListener("click", (e) => {
+    if (e.target === viewProfileModalEl) closeViewProfileModal();
+  });
+
+  return viewProfileModalEl;
+}
+
+async function openViewProfileModal(userId) {
+  ensureViewProfileModal();
+
+  try {
+    const { data, error } = await supa
+      .from("profiles")
+      .select("id, full_name, role, bio, avatar_url")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return;
+
+    const body = document.getElementById("viewProfileBody");
+    if (!body) return;
+    body.innerHTML = "";
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "12px";
+    row.style.alignItems = "center";
+
+    const av = document.createElement("div");
+    av.style.width = "64px";
+    av.style.height = "64px";
+    av.style.borderRadius = "18px";
+    av.style.border = "1px solid var(--border-color)";
+    av.style.background = "rgba(255,255,255,0.06)";
+    av.style.display = "flex";
+    av.style.alignItems = "center";
+    av.style.justifyContent = "center";
+    av.style.fontWeight = "900";
+    av.style.color = "var(--text-primary)";
+
+    const url = data.avatar_url ? getAvatarPublicUrl(data.avatar_url) : "";
+    if (url) {
+      av.style.backgroundImage = `url('${url}')`;
+      av.style.backgroundSize = "cover";
+      av.style.backgroundPosition = "center";
+      av.textContent = "";
+    } else {
+      av.textContent = mkAvatarInitials(data.full_name || "Usuário");
+    }
+
+    const info = document.createElement("div");
+    const nm = document.createElement("div");
+    nm.style.fontWeight = "900";
+    nm.style.color = "var(--text-primary)";
+    nm.style.fontSize = "16px";
+    nm.textContent = data.full_name || "Usuário";
+
+    const rl = document.createElement("div");
+    rl.style.color = "var(--text-muted)";
+    rl.style.fontSize = "12px";
+    rl.textContent = data.role || "membro";
+
+    info.appendChild(nm);
+    info.appendChild(rl);
+
+    row.appendChild(av);
+    row.appendChild(info);
+
+    const bio = document.createElement("div");
+    bio.style.marginTop = "10px";
+    bio.style.color = "var(--text-secondary)";
+    bio.style.whiteSpace = "pre-wrap";
+    bio.textContent = (data.bio || "").trim() || "Sem bio.";
+
+    body.appendChild(row);
+    body.appendChild(bio);
+
+    viewProfileModalEl.style.display = "flex";
+    viewProfileModalEl.setAttribute("aria-hidden", "false");
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function closeViewProfileModal() {
+  if (!viewProfileModalEl) return;
+  viewProfileModalEl.style.display = "none";
+  viewProfileModalEl.setAttribute("aria-hidden", "true");
+}
+
+// deixa 'Minha conta' clicável para editar
+function wireProfileMini() {
+  const mini = document.querySelector(".profile-mini");
+  if (!mini) return;
+  mini.style.cursor = "pointer";
+  mini.title = "Clique para editar seu perfil";
+  mini.addEventListener("click", () => openEditProfileModal());
 }
 
 
@@ -1660,9 +2074,13 @@ async function loadEventsView() {
     // filtro: por padrão só próximos e os que começaram recentemente
     const showPast = getShowPastEvents();
     const now = new Date();
-    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24h atrás (para eventos em andamento)
+    const cutoff = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000); // 3 dias atrás (mantém eventos recentes)
     if (!showPast) {
-      events = events.filter((ev) => ev.start_at && new Date(ev.start_at) >= cutoff);
+      events = events.filter((ev) => {
+        const endOrStart = ev.end_at ? new Date(ev.end_at) : (ev.start_at ? new Date(ev.start_at) : null);
+        if (!endOrStart) return false;
+        return endOrStart >= cutoff;
+      });
     }
 
     eventsCache = events;
@@ -1702,6 +2120,49 @@ btnNewPinned?.addEventListener("click", () => {
   setTimeout(() => captionInput?.focus(), 50);
 });
 
+
+// ----------------- Realtime (atualiza notificações/atividade ao vivo) -----------------
+let realtimeChannel = null;
+
+function isViewActive(viewEl) {
+  if (!viewEl) return false;
+  return viewEl.style.display !== "none" && !viewEl.classList.contains("hidden");
+}
+
+function refreshLiveWidgetsSoon() {
+  if (refreshLiveWidgetsSoon._t) clearTimeout(refreshLiveWidgetsSoon._t);
+  refreshLiveWidgetsSoon._t = setTimeout(async () => {
+    try {
+      await loadNotificationsBadge();
+      if (isViewActive(viewNotifications)) await loadNotificationsView();
+      await loadPinnedSidebar();
+      await loadActivitySidebar();
+      if (isViewActive(viewNotices)) await loadNoticesView();
+      if (isViewActive(viewEvents)) await loadEventsView();
+    } catch (_) {}
+  }, 350);
+}
+
+function initRealtime() {
+  try {
+    if (!supa?.channel) return;
+    if (realtimeChannel) return;
+
+    realtimeChannel = supa
+      .channel("live-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "comment_likes" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps" }, () => refreshLiveWidgetsSoon())
+      .subscribe();
+  } catch (e) {
+    console.warn("Realtime não disponível:", e?.message || e);
+  }
+}
+
+
 async function init() {
   const {
     data: { session },
@@ -1718,7 +2179,7 @@ async function init() {
 
   const { data: profile, error } = await supa
     .from("profiles")
-    .select("id, role, full_name")
+    .select("id, role, full_name, bio, avatar_url")
     .eq("id", currentUser.id)
     .single();
 
@@ -1730,6 +2191,9 @@ async function init() {
 
   currentProfile = profile;
   setTopbarTitle();
+  setMiniProfileUI();
+  wireProfileMini();
+  initRealtime();
 
   // Somente admin pode postar: esconde o +
   if (currentProfile.role !== "admin") {
@@ -2022,6 +2486,9 @@ async function renderPost(post) {
   author.style.fontSize = "14px";
   author.style.color = "var(--text-primary)";
   author.textContent = post.author_name || profilesMap[post.user_id] || "Usuário";
+  author.style.cursor = \"pointer\";
+  author.title = \"Ver perfil\";
+  author.addEventListener(\"click\", (e) => { e.stopPropagation(); openViewProfileModal(post.user_id); });
 
   const date = document.createElement("div");
   date.style.fontSize = "12px";
@@ -2590,6 +3057,9 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post, c
     meta.style.fontSize = "13px";
     meta.style.color = "var(--text-primary)";
     meta.textContent = `${authorName}  ${fmtDateBR(c.created_at)}`;
+    meta.style.cursor = \"pointer\";
+    meta.title = \"Ver perfil\";
+    meta.addEventListener(\"click\", (e) => { e.stopPropagation(); openViewProfileModal(c.user_id); });
 
     const txt = document.createElement("div");
     txt.style.fontSize = "13px";
@@ -3498,3 +3968,44 @@ observer.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ["data-theme"],
 });
+// ----------------- Realtime (atualiza notificações/atividade ao vivo) -----------------
+let realtimeChannel = null;
+
+function isViewActive(viewEl) {
+  if (!viewEl) return false;
+  return viewEl.style.display !== "none" && !viewEl.classList.contains("hidden");
+}
+
+function refreshLiveWidgetsSoon() {
+  // Debounce simples
+  if (refreshLiveWidgetsSoon._t) clearTimeout(refreshLiveWidgetsSoon._t);
+  refreshLiveWidgetsSoon._t = setTimeout(async () => {
+    try {
+      await loadNotificationsBadge();
+      if (isViewActive(viewNotifications)) await loadNotificationsView();
+      await loadPinnedSidebar();
+      await loadActivitySidebar();
+      if (isViewActive(viewNotices)) await loadNoticesView();
+      if (isViewActive(viewEvents)) await loadEventsView();
+    } catch (_) {}
+  }, 300);
+}
+
+function initRealtime() {
+  try {
+    if (!supa?.channel) return;
+    if (realtimeChannel) return;
+
+    realtimeChannel = supa
+      .channel("live-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "comments" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "likes" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "comment_likes" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "events" }, () => refreshLiveWidgetsSoon())
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_rsvps" }, () => refreshLiveWidgetsSoon())
+      .subscribe();
+  } catch (e) {
+    console.warn("Realtime não disponível:", e?.message || e);
+  }
+}
