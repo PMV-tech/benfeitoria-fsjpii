@@ -91,6 +91,19 @@ function setNotifLastSeenNow() {
   localStorage.setItem(notifKey(), new Date().toISOString());
 }
 
+function notifExpireKey(){ return currentUser?.id ? `notif_seen_expire_${currentUser.id}` : 'notif_seen_expire'; }
+function setNotifExpire(){ try{ localStorage.setItem(notifExpireKey(), String(Date.now() + 3*24*60*60*1000)); }catch(_){}}
+function cleanupNotifExpire(){
+  try{
+    const exp = Number(localStorage.getItem(notifExpireKey())||0);
+    if (exp && Date.now() > exp) {
+      localStorage.removeItem(notifExpireKey());
+      // mantém last_seen; apenas limpa o controle de expiração
+    }
+  }catch(_){ }
+}
+
+
 // Botão +
 const addPostBtn = document.querySelector(".add-post");
 
@@ -124,6 +137,9 @@ async function hydrateProfiles(userIds) {
 
 // Quantos comentários aparecem no feed antes do botão "ver mais"
 const COMMENT_PREVIEW_LIMIT = 2;
+
+// Notificações: manter apenas os últimos N dias
+const NOTIF_RETENTION_DAYS = 3;
 
 // ----------------- TEMA -----------------
 function applyThemeToDynamicElements() {
@@ -739,6 +755,7 @@ function setupMenu() {
   // Botões de ação
   btnMarkRead?.addEventListener("click", () => {
     setNotifLastSeenNow();
+    setNotifExpire();
     loadNotificationsBadge();
     loadNotificationsView();
   });
@@ -748,9 +765,13 @@ function setupMenu() {
   if (btnNewPinnedCenter) btnNewPinnedCenter.style.display = isAdmin ? "" : "none";
   btnNewPinnedCenter?.addEventListener("click", () => btnNewPinned?.click());
 
-  // Eventos (placeholder por enquanto)
+  // Eventos
   btnNewEvent?.addEventListener("click", () => {
-    alert("Eventos: em breve (vamos implementar depois).");
+    if (currentProfile?.role !== "admin") {
+      // membros apenas veem a lista; criação é do admin
+      return;
+    }
+    openEventModal({ mode: "create" });
   });
 
   // Restaura última view
@@ -781,6 +802,9 @@ async function fetchNotifications(limit = 50) {
   const myPostIds = await fetchMyPostIds();
   if (!myPostIds.length) return [];
 
+
+  const cutoffIso = new Date(Date.now() - NOTIF_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
   // Likes em posts meus
   try {
     const { data } = await supa
@@ -788,6 +812,7 @@ async function fetchNotifications(limit = 50) {
       .select("created_at, user_id, post_id")
       .in("post_id", myPostIds)
       .neq("user_id", currentUser.id)
+      .gte("created_at", cutoffIso)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -812,6 +837,7 @@ async function fetchNotifications(limit = 50) {
       .select("id, created_at, user_id, post_id, parent_comment_id, content")
       .in("post_id", myPostIds)
       .neq("user_id", currentUser.id)
+      .gte("created_at", cutoffIso)
       .order("created_at", { ascending: false })
       .limit(limit);
 
@@ -846,6 +872,7 @@ async function fetchNotifications(limit = 50) {
         .select("id, created_at, user_id, post_id, parent_comment_id, content")
         .in("parent_comment_id", myCommentIds)
         .neq("user_id", currentUser.id)
+        .gte("created_at", cutoffIso)
         .order("created_at", { ascending: false })
         .limit(limit);
 
@@ -1074,12 +1101,591 @@ async function loadNoticesView() {
   });
 }
 
-// ----------------- Eventos (placeholder) -----------------
-function loadEventsView() {
-  if (!eventsList || !eventsEmpty) return;
-  eventsList.innerHTML = "";
-  eventsEmpty.style.display = "";
+
+// ----------------- Eventos -----------------
+let hasEventsTable = true;
+let hasEventRsvpsTable = true;
+let eventModal = null;
+let editingEventId = null;
+let eventsCache = []; // lista atual em memória
+let myRsvpMap = {}; // event_id -> status
+
+function ensureEventStyles() {
+  if (document.getElementById("eventStyles")) return;
+  const style = document.createElement("style");
+  style.id = "eventStyles";
+  style.textContent = `
+    .event-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: var(--button-bg);
+      color: var(--text-primary);
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .event-pill.active{
+      border-color: rgba(212,175,55,0.75);
+      box-shadow: 0 0 0 4px rgba(212,175,55,0.12);
+    }
+    .event-meta-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+    }
+    .event-date-badge{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(212,175,55,0.18);
+      border: 1px solid rgba(212,175,55,0.35);
+      color: var(--text-primary);
+      font-weight: 900;
+      line-height: 1.0;
+      flex: 0 0 44px;
+    }
+    .event-date-badge .d{ font-size: 14px; }
+    .event-date-badge .m{ font-size: 11px; opacity: .85; margin-top: 2px; }
+    .event-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-left:auto;
+      flex-wrap:wrap;
+    }
+    .event-modal-grid label{ display:block; margin-top: 10px; font-weight: 800; color: var(--text-primary); font-size: 13px; }
+    .event-modal-grid input, .event-modal-grid textarea{
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      outline: none;
+    }
+    .event-modal-grid textarea{ resize: vertical; min-height: 90px; }
+    .event-modal-row{ display:flex; gap:10px; }
+    .event-modal-row > div{ flex:1; }
+    .event-check{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top: 10px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .event-check input{ width: 16px; height: 16px; }
+    .event-divider{ height: 1px; background: var(--border-light); margin: 12px 0; opacity: .9; }
+  `;
+  document.head.appendChild(style);
 }
+
+function fmtEventDate(startAt, endAt, allDay) {
+  try {
+    const s = new Date(startAt);
+    const d = s.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    if (allDay) return `${d} (dia todo)`;
+    const t = s.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (!endAt) return `${d} • ${t}`;
+    const e = new Date(endAt);
+    const t2 = e.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return `${d} • ${t}–${t2}`;
+  } catch {
+    return "";
+  }
+}
+
+function monthShortPT(dateObj) {
+  const m = dateObj.toLocaleString("pt-BR", { month: "short" });
+  return (m || "").replace(".", "").toUpperCase();
+}
+
+function rsvpLabel(status) {
+  if (status === "going") return "Vou";
+  if (status === "maybe") return "Talvez";
+  if (status === "no") return "Não vou";
+  return "Responder";
+}
+
+function isoForDatetimeLocal(dateObj) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const y = dateObj.getFullYear();
+  const m = pad(dateObj.getMonth() + 1);
+  const d = pad(dateObj.getDate());
+  const hh = pad(dateObj.getHours());
+  const mm = pad(dateObj.getMinutes());
+  return `${y}-${m}-${d}T${hh}:${mm}`;
+}
+
+function ensureEventModal() {
+  ensureEventStyles();
+  if (eventModal) return eventModal;
+
+  eventModal = document.createElement("div");
+  eventModal.className = "modal";
+  eventModal.id = "eventModal";
+  eventModal.setAttribute("aria-hidden", "true");
+
+  const card = document.createElement("div");
+  card.className = "modal-card";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "modal-close";
+  closeBtn.type = "button";
+  closeBtn.textContent = "×";
+  closeBtn.setAttribute("aria-label", "Fechar");
+  closeBtn.addEventListener("click", () => closeEventModal());
+
+  const h3 = document.createElement("h3");
+  h3.id = "eventModalTitle";
+  h3.textContent = "Evento";
+
+  const grid = document.createElement("div");
+  grid.className = "event-modal-grid";
+
+  grid.innerHTML = `
+    <label for="evTitle">Título</label>
+    <input id="evTitle" type="text" placeholder="Ex.: Reunião de domingo" />
+
+    <div class="event-modal-row">
+      <div>
+        <label for="evStart">Início</label>
+        <input id="evStart" type="datetime-local" />
+      </div>
+      <div>
+        <label for="evEnd">Fim (opcional)</label>
+        <input id="evEnd" type="datetime-local" />
+      </div>
+    </div>
+
+    <div class="event-check">
+      <input id="evAllDay" type="checkbox" />
+      <label for="evAllDay" style="margin:0; font-weight:800; cursor:pointer;">Dia todo</label>
+    </div>
+
+    <label for="evLocation">Local (opcional)</label>
+    <input id="evLocation" type="text" placeholder="Ex.: Salão principal" />
+
+    <label for="evDesc">Descrição (opcional)</label>
+    <textarea id="evDesc" placeholder="Detalhes do evento..."></textarea>
+
+    <div class="event-divider"></div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+      <div id="evRsvpRow" class="event-meta-row" style="margin:0;">
+        <span style="color:var(--text-muted); font-size:12px; font-weight:800;">Sua resposta:</span>
+        <button type="button" class="event-pill" data-rsvp="going">Vou</button>
+        <button type="button" class="event-pill" data-rsvp="maybe">Talvez</button>
+        <button type="button" class="event-pill" data-rsvp="no">Não vou</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" class="btn secondary" id="evDelete" style="display:none;">Excluir</button>
+      </div>
+    </div>
+  `;
+
+  const actions = document.createElement("div");
+  actions.className = "modal-actions";
+  actions.innerHTML = `
+    <button class="btn secondary" id="evCancel" type="button">Fechar</button>
+    <button class="btn primary" id="evSave" type="button">Salvar</button>
+  `;
+
+  card.appendChild(closeBtn);
+  card.appendChild(h3);
+  card.appendChild(grid);
+  card.appendChild(actions);
+
+  eventModal.appendChild(card);
+  document.body.appendChild(eventModal);
+
+  // backdrop click
+  eventModal.addEventListener("click", (e) => {
+    if (e.target === eventModal) closeEventModal();
+  });
+
+  // wire buttons
+  eventModal.querySelector("#evCancel").addEventListener("click", () => closeEventModal());
+  eventModal.querySelector("#evSave").addEventListener("click", () => saveEventFromModal());
+  eventModal.querySelector("#evDelete").addEventListener("click", () => deleteEventFromModal());
+
+  // RSVP buttons
+  eventModal.querySelectorAll(".event-pill[data-rsvp]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const status = btn.getAttribute("data-rsvp");
+      if (!editingEventId) return;
+      await setMyEventRsvp(editingEventId, status);
+      renderEventModalRsvp(editingEventId);
+      // atualiza lista
+      await loadEventsView();
+    });
+  });
+
+  return eventModal;
+}
+
+function openEventModal({ mode = "view", event = null } = {}) {
+  ensureEventModal();
+  const isAdmin = currentProfile?.role === "admin";
+
+  const titleEl = eventModal.querySelector("#eventModalTitle");
+  const evTitle = eventModal.querySelector("#evTitle");
+  const evStart = eventModal.querySelector("#evStart");
+  const evEnd = eventModal.querySelector("#evEnd");
+  const evAllDay = eventModal.querySelector("#evAllDay");
+  const evLocation = eventModal.querySelector("#evLocation");
+  const evDesc = eventModal.querySelector("#evDesc");
+  const btnSave = eventModal.querySelector("#evSave");
+  const btnDelete = eventModal.querySelector("#evDelete");
+
+  if (mode === "create") {
+    editingEventId = null;
+    titleEl.textContent = "Novo evento";
+    evTitle.value = "";
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 30);
+    evStart.value = isoForDatetimeLocal(now);
+    evEnd.value = "";
+    evAllDay.checked = false;
+    evLocation.value = "";
+    evDesc.value = "";
+
+    // admin pode salvar, não tem delete
+    btnSave.style.display = isAdmin ? "" : "none";
+    btnDelete.style.display = "none";
+
+    // RSVP desabilitado (não existe evento ainda)
+    setRsvpRowEnabled(false);
+
+    // Campos editáveis só para admin
+    setEventFieldsEnabled(isAdmin);
+
+  } else {
+    editingEventId = event?.id || null;
+    titleEl.textContent = "Evento";
+    evTitle.value = event?.title || "";
+    evStart.value = event?.start_at ? isoForDatetimeLocal(new Date(event.start_at)) : "";
+    evEnd.value = event?.end_at ? isoForDatetimeLocal(new Date(event.end_at)) : "";
+    evAllDay.checked = !!event?.all_day;
+    evLocation.value = event?.location || "";
+    evDesc.value = event?.description || "";
+
+    // admin pode salvar/editar e excluir
+    btnSave.style.display = isAdmin ? "" : "none";
+    btnDelete.style.display = isAdmin ? "" : "none";
+
+    setEventFieldsEnabled(isAdmin);
+
+    // RSVP habilitado para todos (se tabela existir)
+    setRsvpRowEnabled(hasEventRsvpsTable);
+
+    // renderiza estado do RSVP
+    renderEventModalRsvp(editingEventId);
+  }
+
+  eventModal.classList.add("show");
+  eventModal.setAttribute("aria-hidden", "false");
+}
+
+function closeEventModal() {
+  if (!eventModal) return;
+  eventModal.classList.remove("show");
+  eventModal.setAttribute("aria-hidden", "true");
+  editingEventId = null;
+}
+
+function setEventFieldsEnabled(enabled) {
+  if (!eventModal) return;
+  ["#evTitle", "#evStart", "#evEnd", "#evAllDay", "#evLocation", "#evDesc"].forEach((sel) => {
+    const el = eventModal.querySelector(sel);
+    if (!el) return;
+    el.disabled = !enabled;
+  });
+}
+
+function setRsvpRowEnabled(enabled) {
+  if (!eventModal) return;
+  eventModal.querySelectorAll(".event-pill[data-rsvp]").forEach((btn) => {
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? "1" : "0.5";
+    btn.style.pointerEvents = enabled ? "auto" : "none";
+  });
+}
+
+function renderEventModalRsvp(eventId) {
+  if (!eventModal || !eventId) return;
+  const status = myRsvpMap[eventId] || "";
+  eventModal.querySelectorAll(".event-pill[data-rsvp]").forEach((btn) => {
+    const s = btn.getAttribute("data-rsvp");
+    btn.classList.toggle("active", s === status);
+  });
+}
+
+// Create/Update event
+async function saveEventFromModal() {
+  if (currentProfile?.role !== "admin") return;
+  if (!eventModal) return;
+
+  const evTitle = eventModal.querySelector("#evTitle").value.trim();
+  const evStart = eventModal.querySelector("#evStart").value;
+  const evEnd = eventModal.querySelector("#evEnd").value;
+  const evAllDay = !!eventModal.querySelector("#evAllDay").checked;
+  const evLocation = eventModal.querySelector("#evLocation").value.trim();
+  const evDesc = eventModal.querySelector("#evDesc").value.trim();
+
+  if (!evTitle) { alert("Título é obrigatório."); return; }
+  if (!evStart) { alert("Data/hora de início é obrigatória."); return; }
+
+  const payload = {
+    title: evTitle,
+    start_at: new Date(evStart).toISOString(),
+    end_at: evEnd ? new Date(evEnd).toISOString() : null,
+    all_day: evAllDay,
+    location: evLocation || null,
+    description: evDesc || null,
+  };
+
+  try {
+    if (!hasEventsTable) return;
+
+    if (!editingEventId) {
+      payload.created_by = currentUser.id;
+      const { error } = await supa.from("events").insert(payload);
+      if (error) throw error;
+    } else {
+      const { error } = await supa.from("events").update(payload).eq("id", editingEventId);
+      if (error) throw error;
+    }
+
+    closeEventModal();
+    await loadEventsView();
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao salvar evento.");
+  }
+}
+
+async function deleteEventFromModal() {
+  if (currentProfile?.role !== "admin") return;
+  if (!editingEventId) return;
+  const ok = confirm("Excluir este evento?");
+  if (!ok) return;
+
+  try {
+    const { error } = await supa.from("events").delete().eq("id", editingEventId);
+    if (error) throw error;
+    closeEventModal();
+    await loadEventsView();
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao excluir evento.");
+  }
+}
+
+async function loadMyRsvps(eventIds) {
+  myRsvpMap = {};
+  if (!hasEventRsvpsTable || !eventIds?.length) return;
+
+  try {
+    const { data, error } = await supa
+      .from("event_rsvps")
+      .select("event_id, status")
+      .eq("user_id", currentUser.id)
+      .in("event_id", eventIds);
+
+    if (error) {
+      // tabela pode não existir
+      if ((error.message || "").toLowerCase().includes("does not exist")) hasEventRsvpsTable = false;
+      return;
+    }
+
+    (data || []).forEach((r) => {
+      if (r?.event_id) myRsvpMap[r.event_id] = r.status;
+    });
+  } catch (_) {}
+}
+
+async function setMyEventRsvp(eventId, status) {
+  if (!hasEventRsvpsTable) return;
+
+  try {
+    const { error } = await supa.from("event_rsvps").upsert(
+      { event_id: eventId, user_id: currentUser.id, status },
+      { onConflict: "event_id,user_id" }
+    );
+    if (error) throw error;
+    myRsvpMap[eventId] = status;
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao responder evento.");
+  }
+}
+
+function renderEventsList(events) {
+  eventsList.innerHTML = "";
+  if (!events?.length) {
+    eventsEmpty.style.display = "";
+    return;
+  }
+  eventsEmpty.style.display = "none";
+
+  events.forEach((ev) => {
+    const item = document.createElement("div");
+    item.className = "view-item";
+    item.dataset.eventId = ev.id;
+
+    const d = new Date(ev.start_at);
+    const avatar = document.createElement("div");
+    avatar.className = "event-date-badge";
+    avatar.innerHTML = `<div class="d">${String(d.getDate()).padStart(2, "0")}</div><div class="m">${monthShortPT(d)}</div>`;
+
+    const main = document.createElement("div");
+    main.className = "vi-main";
+
+    const title = document.createElement("div");
+    title.className = "vi-title";
+    title.textContent = ev.title || "Evento";
+
+    const sub = document.createElement("div");
+    sub.className = "vi-sub";
+    const when = fmtEventDate(ev.start_at, ev.end_at, ev.all_day);
+    const loc = ev.location ? ` • ${ev.location}` : "";
+    sub.textContent = when + loc;
+
+    const meta = document.createElement("div");
+    meta.className = "vi-meta";
+    const mine = myRsvpMap[ev.id];
+    meta.textContent = mine ? `Sua resposta: ${rsvpLabel(mine)}` : "Toque para ver / responder";
+
+    main.appendChild(title);
+    main.appendChild(sub);
+    main.appendChild(meta);
+
+    const actions = document.createElement("div");
+    actions.className = "event-actions";
+
+    // RSVP pill (mostra status atual; clique abre modal)
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "event-pill";
+    pill.textContent = mine ? rsvpLabel(mine) : "Responder";
+    pill.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openEventModal({ mode: "view", event: ev });
+    });
+
+    actions.appendChild(pill);
+
+    // admin quick delete/edit via modal
+    if (currentProfile?.role === "admin") {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "event-pill";
+      edit.textContent = "Editar";
+      edit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEventModal({ mode: "view", event: ev });
+        // campos já ficam editáveis pro admin e tem salvar/excluir
+      });
+      actions.appendChild(edit);
+    }
+
+    item.appendChild(avatar);
+    item.appendChild(main);
+    item.appendChild(actions);
+
+    item.addEventListener("click", () => openEventModal({ mode: "view", event: ev }));
+
+    eventsList.appendChild(item);
+  });
+}
+
+function getShowPastEvents() {
+  try { return localStorage.getItem("events_show_past") === "1"; } catch { return false; }
+}
+function setShowPastEvents(v) {
+  try { localStorage.setItem("events_show_past", v ? "1" : "0"); } catch (_) {}
+}
+
+async function loadEventsView() {
+  if (!eventsList || !eventsEmpty) return;
+
+  ensureEventStyles();
+
+  eventsEmpty.textContent = "Carregando eventos…";
+  eventsEmpty.style.display = "";
+  eventsList.innerHTML = "";
+
+  // botão novo evento só para admin
+  if (btnNewEvent) btnNewEvent.style.display = currentProfile?.role === "admin" ? "" : "none";
+
+  // se tabela não existir, orienta
+  if (!hasEventsTable) {
+    eventsEmpty.textContent = "Eventos não configurado no Supabase. Rode o SQL da seção 'Eventos'.";
+    return;
+  }
+
+  try {
+    const { data, error } = await supa
+      .from("events")
+      .select("id, title, description, location, start_at, end_at, all_day, created_by, created_at")
+      .order("start_at", { ascending: true })
+      .limit(200);
+
+    if (error) {
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("does not exist") || msg.includes("relation") && msg.includes("events")) {
+        hasEventsTable = false;
+        eventsEmpty.textContent = "Eventos não configurado no Supabase. Rode o SQL da seção 'Eventos'.";
+        return;
+      }
+      throw error;
+    }
+
+    let events = Array.isArray(data) ? data : [];
+
+    // filtro: por padrão só próximos e os que começaram recentemente
+    const showPast = getShowPastEvents();
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24h atrás (para eventos em andamento)
+    if (!showPast) {
+      events = events.filter((ev) => ev.start_at && new Date(ev.start_at) >= cutoff);
+    }
+
+    eventsCache = events;
+
+    // carrega RSVPs do usuário
+    await loadMyRsvps(events.map((e) => e.id));
+
+    // atualiza rótulos com RSVP
+    renderEventsList(eventsCache);
+
+    // Estado vazio
+    if (!eventsCache.length) {
+      eventsEmpty.textContent = showPast ? "Nenhum evento encontrado." : "Sem eventos futuros. (Dica: admin pode criar em '＋ Novo evento')";
+      eventsEmpty.style.display = "";
+    }
+
+  } catch (e) {
+    console.error(e);
+    eventsEmpty.textContent = e?.message || "Erro ao carregar eventos.";
+    eventsEmpty.style.display = "";
+  }
+}
+
 
 
 // Atalho: criar aviso fixado (admin)
@@ -1107,6 +1713,8 @@ async function init() {
   }
 
   currentUser = session.user;
+
+  cleanupNotifExpire();
 
   const { data: profile, error } = await supa
     .from("profiles")
