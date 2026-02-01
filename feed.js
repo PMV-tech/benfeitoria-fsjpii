@@ -42,13 +42,28 @@ const likesModal = document.getElementById("likesModal");
 const closeLikesModal = document.getElementById("closeLikesModal");
 const likesList = document.getElementById("likesList");
 
+// Sidebars
+const miniProfileName = document.getElementById("miniProfileName");
+const miniProfileRole = document.getElementById("miniProfileRole");
+const adminShortcuts = document.getElementById("adminShortcuts");
+const btnNewPinned = document.getElementById("btnNewPinned");
+
+const pinnedList = document.getElementById("pinnedList");
+const pinnedEmpty = document.getElementById("pinnedEmpty");
+const activityList = document.getElementById("activityList");
+const activityEmpty = document.getElementById("activityEmpty");
+
 // Botão +
 const addPostBtn = document.querySelector(".add-post");
 
 let pendingFile = null;
+let forcePinOnPublish = false; // usado pelo atalho 'Novo aviso fixado'
 let currentUser = null;
 let currentProfile = null;
 let editingCommentId = null;
+
+// Feature flags (tabelas/colunas opcionais)
+let hasPinnedColumn = true;
 
 // Map de perfis (para nome de autor)
 let profilesMap = {}; // id -> full_name
@@ -111,6 +126,11 @@ function setTopbarTitle() {
   const isAdmin = currentProfile?.role === "admin";
   if (topbarTitle) topbarTitle.textContent = isAdmin ? "FSJPII • Admin" : "FSJPII";
   document.title = isAdmin ? "Feed | Admin FSJPII" : "Feed | FSJPII";
+
+  // Sidebars
+  if (miniProfileName) miniProfileName.textContent = currentProfile?.full_name || "Usuário";
+  if (miniProfileRole) miniProfileRole.textContent = isAdmin ? "Admin" : "Membro";
+  if (adminShortcuts) adminShortcuts.style.display = isAdmin ? "" : "none";
 }
 
 function setModalOpen(open) {
@@ -295,6 +315,7 @@ function ensureChoiceModal() {
   btnWithout.addEventListener("click", () => {
     closeChoiceModal();
     pendingFile = null;
+  forcePinOnPublish = false;
 
     // Sem imagem: esconde a área de prévia (não deixa ícone quebrado)
     setPreviewVisible(false);
@@ -486,6 +507,150 @@ likesModal?.addEventListener("click", (e) => {
 });
 
 // ----------------- Auth / Perfil -----------------
+// ----------------- Detect feature support -----------------
+async function detectPinnedSupport() {
+  // Detecta se existe coluna "pinned" em posts (evita quebrar caso o SQL ainda não tenha sido aplicado)
+  try {
+    const { error } = await supa.from("posts").select("id, pinned").limit(1);
+    if (error) throw error;
+    hasPinnedColumn = true;
+  } catch (e) {
+    hasPinnedColumn = false;
+  }
+}
+
+async function loadPinnedSidebar() {
+  if (!pinnedList || !pinnedEmpty) return;
+
+  pinnedList.innerHTML = "";
+  pinnedEmpty.style.display = "none";
+
+  if (!hasPinnedColumn) {
+    pinnedEmpty.textContent = "Para usar avisos fixados, adicione a coluna 'pinned' na tabela posts.";
+    pinnedEmpty.style.display = "";
+    return;
+  }
+
+  const { data, error } = await supa
+    .from("posts")
+    .select("id, caption, image_url, created_at, user_id, pinned")
+    .eq("pinned", true)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error(error);
+    pinnedEmpty.textContent = "Erro ao carregar avisos fixados.";
+    pinnedEmpty.style.display = "";
+    return;
+  }
+
+  const list = Array.isArray(data) ? data : [];
+  if (!list.length) {
+    pinnedEmpty.textContent = "Nenhum aviso fixado ainda.";
+    pinnedEmpty.style.display = "";
+    return;
+  }
+
+  list.forEach((p) => {
+    const item = document.createElement("div");
+    item.className = "side-item";
+    item.dataset.postId = p.id;
+
+    const title = document.createElement("div");
+    title.className = "side-item-title";
+    title.textContent = profilesMap[p.user_id] || "Usuário";
+
+    const sub = document.createElement("div");
+    sub.className = "side-item-sub";
+    sub.textContent = (p.caption || "").replace(/\s+/g, " ").trim() || "(sem texto)";
+
+    item.appendChild(title);
+    item.appendChild(sub);
+
+    item.addEventListener("click", () => {
+      const target = document.querySelector(`.post[data-post-id="${p.id}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("pulse-highlight");
+        setTimeout(() => target.classList.remove("pulse-highlight"), 1200);
+      }
+    });
+
+    pinnedList.appendChild(item);
+  });
+}
+
+async function loadActivitySidebar() {
+  if (!activityList || !activityEmpty) return;
+
+  activityList.innerHTML = "";
+  activityEmpty.style.display = "none";
+
+  const { data, error } = await supa
+    .from("comments")
+    .select("id, post_id, user_id, content, created_at")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.error(error);
+    activityEmpty.textContent = "Erro ao carregar atividade.";
+    activityEmpty.style.display = "";
+    return;
+  }
+
+  const list = Array.isArray(data) ? data : [];
+  if (!list.length) {
+    activityEmpty.textContent = "Sem atividade recente.";
+    activityEmpty.style.display = "";
+    return;
+  }
+
+  list.forEach((c) => {
+    const item = document.createElement("div");
+    item.className = "side-item";
+    item.dataset.postId = c.post_id;
+
+    const title = document.createElement("div");
+    title.className = "side-item-title";
+    title.textContent = profilesMap[c.user_id] || "Usuário";
+
+    const sub = document.createElement("div");
+    sub.className = "side-item-sub";
+    sub.textContent = (c.content || "").replace(/\s+/g, " ").trim() || "(comentário)";
+
+    item.appendChild(title);
+    item.appendChild(sub);
+
+    item.addEventListener("click", () => {
+      const target = document.querySelector(`.post[data-post-id="${c.post_id}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("pulse-highlight");
+        setTimeout(() => target.classList.remove("pulse-highlight"), 1200);
+      }
+    });
+
+    activityList.appendChild(item);
+  });
+}
+
+// Atalho: criar aviso fixado (admin)
+btnNewPinned?.addEventListener("click", () => {
+  if (currentProfile?.role !== "admin") return;
+  forcePinOnPublish = true;
+  pendingFile = null;
+  forcePinOnPublish = false;
+  // abre modal sem imagem, sem prévia
+  if (previewWrap) previewWrap.style.display = "none";
+  if (previewImg) { previewImg.removeAttribute("src"); previewImg.src = ""; }
+  if (captionInput) captionInput.value = "";
+  postModal?.classList.add("show");
+  postModal?.setAttribute("aria-hidden", "false");
+  setTimeout(() => captionInput?.focus(), 50);
+});
+
 async function init() {
   const {
     data: { session },
@@ -520,8 +685,12 @@ async function init() {
     if (addPostBtn) addPostBtn.style.display = "flex";
   }
 
+  await detectPinnedSupport();
+
   applyThemeToDynamicElements();
   await carregarFeed();
+  await loadPinnedSidebar();
+  await loadActivitySidebar();
 }
 
 init();
@@ -530,11 +699,33 @@ init();
 async function carregarFeed() {
   feed.innerHTML = "";
 
-  const { data: posts, error } = await supa
-    .from("v_feed")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // carrega feed (view) + tenta ordenar por pinned se existir
+  let postsRes;
+  if (hasPinnedColumn) {
+    postsRes = await supa
+      .from("v_feed")
+      .select("*")
+      .order("pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    // se a view não tiver a coluna pinned, faz fallback
+    if (postsRes.error) {
+      postsRes = await supa
+        .from("v_feed")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+    }
+  } else {
+    postsRes = await supa
+      .from("v_feed")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+  }
+
+  const { data: posts, error } = postsRes;
 
   if (error) {
     console.error(error);
@@ -559,6 +750,26 @@ async function carregarFeed() {
     }
   }
 
+  // Se a view não retornar 'pinned', tentamos buscar na tabela posts (uma única vez)
+  if (hasPinnedColumn && Array.isArray(posts) && posts.length) {
+    try {
+      const ids = posts.map((p) => p.id).filter(Boolean);
+      const { data: pinRows, error: pinErr } = await supa
+        .from("posts")
+        .select("id, pinned")
+        .in("id", ids);
+
+      if (!pinErr && Array.isArray(pinRows)) {
+        const pinnedMap = Object.fromEntries(pinRows.map((r) => [r.id, !!r.pinned]));
+        posts.forEach((p) => {
+          if (typeof p.pinned === "undefined") p.pinned = pinnedMap[p.id] || false;
+        });
+      }
+    } catch (e) {
+      // ignora
+    }
+  }
+
   for (const post of posts || []) {
     const nameFromProfiles = profilesMap[post.user_id];
     if (!post.author_name && nameFromProfiles) post.author_name = nameFromProfiles;
@@ -568,6 +779,8 @@ async function carregarFeed() {
   }
 
   applyThemeToDynamicElements();
+  loadPinnedSidebar().catch(() => {});
+  loadActivitySidebar().catch(() => {});
 }
 
 function fmtDateBR(isoString) {
@@ -785,8 +998,33 @@ async function renderPost(post) {
 
   header.appendChild(left);
 
-  // Botão excluir post (admin)
+  // Ações do post (admin)
   if (isAdmin) {
+    // Fixar/desafixar (se suporte disponível)
+    if (hasPinnedColumn) {
+      const pinBtn = makeIconButton({ title: post.pinned ? "Desafixar" : "Fixar" });
+      pinBtn.textContent = post.pinned ? "📌" : "📍";
+      pinBtn.style.fontSize = "16px";
+      pinBtn.style.width = "34px";
+      pinBtn.style.height = "34px";
+
+      pinBtn.addEventListener("click", async () => {
+        try {
+          const next = !post.pinned;
+          const { error } = await supa.from("posts").update({ pinned: next }).eq("id", post.id);
+          if (error) throw error;
+          post.pinned = next;
+          await carregarFeed();
+          await loadPinnedSidebar();
+        } catch (e) {
+          console.error(e);
+          alert(e?.message || "Erro ao fixar/desafixar.");
+        }
+      });
+
+      header.appendChild(pinBtn);
+    }
+
     const delPostBtn = makeIconButton({ title: "Excluir post", variant: "danger" });
     delPostBtn.addEventListener("click", async () => {
       const ok = confirm("Excluir este post? Isso remove o post e a imagem (se houver).");
@@ -2045,6 +2283,7 @@ fileInput?.addEventListener("change", () => {
 function fecharModal() {
   setModalOpen(false);
   pendingFile = null;
+  forcePinOnPublish = false;
 
   // Fecha sempre limpando e escondendo a prévia
   setPreviewVisible(false);
@@ -2090,7 +2329,7 @@ publishPost?.addEventListener("click", async () => {
 
       const { error: insErr } = await supa
         .from("posts")
-        .insert({ user_id: currentUser.id, caption, image_url: filePath });
+        .insert({ user_id: currentUser.id, caption, image_url: filePath, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) });
 
       if (insErr) throw insErr;
     }
@@ -2098,7 +2337,7 @@ publishPost?.addEventListener("click", async () => {
     else {
       const { error: insErr } = await supa
         .from("posts")
-        .insert({ user_id: currentUser.id, caption, image_url: null });
+        .insert({ user_id: currentUser.id, caption, image_url: null, ...(forcePinOnPublish && hasPinnedColumn ? { pinned: true } : {}) });
 
       if (insErr) throw insErr;
     }
