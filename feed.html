@@ -48,13 +48,15 @@
 
       <div class="side-card">
         <div class="side-title">Menu</div>
-        <button class="side-link active" type="button">Feed</button>
-        <button class="side-link" type="button" disabled>Notificações (em breve)</button>
-        <button class="side-link" type="button" disabled>Avisos (em breve)</button>
-        <button class="side-link" type="button" disabled>Eventos (em breve)</button>
+        <button class="side-link active" type="button" id="navFeed" data-view="feed">Feed</button>
+        <button class="side-link" type="button" id="navNotifications" data-view="notifications">
+          Notificações <span id="notifBadge" class="side-badge" style="display:none;">0</span>
+        </button>
+        <button class="side-link" type="button" id="navNotices" data-view="notices">Avisos</button>
+        <button class="side-link" type="button" id="navEvents" data-view="events">Eventos</button>
       </div>
 
-      <div class="side-card admin-only" id="adminShortcuts" style="display:none;">
+      <div class="side-card admin-only<div class="side-card admin-only" id="adminShortcuts" style="display:none;">
         <div class="side-title">Atalhos do admin</div>
         <button class="side-link" type="button" id="btnNewPinned">📌 Novo aviso fixado</button>
         <div class="side-hint">Dica: você também pode fixar qualquer post pelo ícone 📌 no card.</div>
@@ -62,7 +64,39 @@
     </aside>
 
     <!-- Feed central -->
-    <main id="feed"></main>
+    <!-- Conteúdo central (views) -->
+    <main id="mainContent" class="main-content">
+      <section class="view view-active" id="view-feed" data-view="feed">
+        <div id="feed"></div>
+      </section>
+
+      <section class="view" id="view-notifications" data-view="notifications">
+        <div class="view-header">
+          <h3>Notificações</h3>
+          <button id="btnMarkRead" type="button" class="view-action">Marcar como lidas</button>
+        </div>
+        <div id="notifList" class="view-list"></div>
+        <div id="notifEmpty" class="side-empty" style="display:none;">Sem notificações.</div>
+      </section>
+
+      <section class="view" id="view-notices" data-view="notices">
+        <div class="view-header">
+          <h3>Avisos</h3>
+          <button id="btnNewPinnedCenter" type="button" class="view-action">📌 Novo aviso fixado</button>
+        </div>
+        <div id="noticesList" class="view-list"></div>
+        <div id="noticesEmpty" class="side-empty" style="display:none;">Nenhum aviso fixado ainda.</div>
+      </section>
+
+      <section class="view" id="view-events" data-view="events">
+        <div class="view-header">
+          <h3>Eventos</h3>
+          <button id="btnNewEvent" type="button" class="view-action">＋ Novo evento</button>
+        </div>
+        <div id="eventsList" class="view-list"></div>
+        <div id="eventsEmpty" class="side-empty">Em breve: calendário de eventos.</div>
+      </section>
+    </main>
 
     <!-- Sidebar direita -->
     <aside class="sidebar sidebar-right" id="rightSidebar">
