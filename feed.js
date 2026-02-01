@@ -20,10 +20,23 @@ const btnTheme = document.getElementById("btnTheme");
 // Modal de novo post
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
+const previewWrap = previewImg?.closest(".modal-preview") || document.querySelector("#postModal .modal-preview");
+
+function setPreviewVisible(visible) {
+  if (previewWrap) previewWrap.style.display = visible ? "" : "none";
+  if (!visible && previewImg) {
+    previewImg.removeAttribute("src");
+    previewImg.src = "";
+  }
+}
+
 const captionInput = document.getElementById("captionInput");
 const publishPost = document.getElementById("publishPost");
 const cancelPost = document.getElementById("cancelPost");
 const closeModal = document.getElementById("closeModal");
+
+// Esconde a área de prévia por padrão (evita ícone de imagem quebrada)
+setPreviewVisible(false);
 
 // Modal de curtidas
 const likesModal = document.getElementById("likesModal");
@@ -107,80 +120,59 @@ function makeIconButton({ title, variant = "default", icon = "trash" } = {}) {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
         xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M9 3h6l1 2h5v2H3V5h5l1-2Z" fill="currentColor"/>
-        <path d="M6 9h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Z"
-          fill="currentColor" opacity="0.7"/>
-        <path d="M10 12v7M14 12v7" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+        <path d="M6 9h12l-1 12H7L6 9Z" fill="currentColor" opacity="0.9"/>
       </svg>
     `;
-  } else if (icon === "edit") {
+  } else if (icon === "x") {
     svg.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M17 3L21 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <path d="M14 6L4 16V20H8L18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+        xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     `;
-  } else if (icon === "check") {
-    svg.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    `;
+  } else {
+    svg.textContent = "•";
   }
 
-  svg.style.color = isDarkMode ? "#ffffff" : "#222222";
   btn.appendChild(svg);
-
-  if (variant === "danger") {
-    btn.style.borderColor = "rgba(255, 80, 120, 0.25)";
-  }
 
   btn.addEventListener("mouseenter", () => {
     btn.style.background = hoverBg;
+    btn.style.borderColor = hoverBorder;
     btn.style.transform = "translateY(-1px)";
-    btn.style.borderColor = variant === "danger" ? "rgba(255, 80, 120, 0.45)" : hoverBorder;
   });
+
   btn.addEventListener("mouseleave", () => {
     btn.style.background = bg;
+    btn.style.borderColor = border;
     btn.style.transform = "translateY(0)";
-    btn.style.borderColor = variant === "danger" ? "rgba(255, 80, 120, 0.25)" : border;
   });
+
+  if (variant === "danger") {
+    btn.classList.add("btn-danger");
+    btn.style.color = "var(--danger)";
+    svg.style.color = "inherit";
+  } else {
+    btn.style.color = "var(--text-primary)";
+  }
 
   return btn;
 }
 
-// Storage (bucket public)
-function getPublicImageUrl(path) {
-  const { data } = supa.storage.from("posts").getPublicUrl(path);
-  return data?.publicUrl || "";
-}
-
-// ----------------- Modal: escolher post com/sem imagem -----------------
+// ----------------- Modal de escolha (com / sem imagem) -----------------
 let choiceModal = null;
 
 function ensureChoiceModal() {
   if (choiceModal) return choiceModal;
 
   choiceModal = document.createElement("div");
-  choiceModal.id = "choiceModal";
-  choiceModal.style.position = "fixed";
-  choiceModal.style.inset = "0";
-  choiceModal.style.background = "rgba(0,0,0,0.55)";
-  choiceModal.style.backdropFilter = "blur(8px)";
+  choiceModal.className = "modal";
+  choiceModal.setAttribute("aria-hidden", "true");
   choiceModal.style.display = "none";
-  choiceModal.style.alignItems = "center";
-  choiceModal.style.justifyContent = "center";
-  choiceModal.style.zIndex = "10001";
-  choiceModal.style.padding = "20px";
 
   const card = document.createElement("div");
-  card.style.width = "100%";
+  card.className = "modal-card";
   card.style.maxWidth = "420px";
-  card.style.background = "var(--bg-card)";
-  card.style.border = "1px solid var(--border-color)";
-  card.style.borderRadius = "18px";
-  card.style.padding = "18px";
-  card.style.boxShadow = "0 20px 60px rgba(0,0,0,0.35)";
 
   const title = document.createElement("div");
   title.textContent = "Novo post";
@@ -246,7 +238,10 @@ function ensureChoiceModal() {
   btnWithout.addEventListener("click", () => {
     closeChoiceModal();
     pendingFile = null;
-    if (previewImg) previewImg.src = "";
+
+    // Post sem imagem: não mostra a área de prévia
+    setPreviewVisible(false);
+
     if (captionInput) captionInput.value = "";
     setModalOpen(true);
     setTimeout(() => captionInput?.focus(), 50);
@@ -290,138 +285,27 @@ function closeChoiceModal() {
   choiceModal.setAttribute("aria-hidden", "true");
 }
 
-// ----------------- Função para abrir modal com quem curtiu -----------------
-async function abrirModalCurtidas(postId, postEl = null) {
-  likesList.innerHTML = `
-    <div class="likes-empty">
-      <i class="fas fa-spinner fa-spin"></i>
-      <p>Carregando curtidas...</p>
-    </div>
-  `;
-
+// ----------------- Curtidas (modal de quem curtiu) -----------------
+function abrirModalCurtidas(users) {
+  likesList.innerHTML = "";
+  if (!users?.length) {
+    const empty = document.createElement("div");
+    empty.textContent = "Ninguém curtiu ainda.";
+    empty.style.color = "var(--text-muted)";
+    empty.style.fontSize = "14px";
+    likesList.appendChild(empty);
+  } else {
+    users.forEach((u) => {
+      const item = document.createElement("div");
+      item.className = "like-item";
+      item.textContent = u?.full_name || u?.email || "Usuário";
+      likesList.appendChild(item);
+    });
+  }
   likesModal.classList.add("show");
   likesModal.setAttribute("aria-hidden", "false");
-
-  try {
-    const { data: likes, error } = await supa
-      .from("likes")
-      .select(
-        `
-        created_at,
-        user_id,
-        profiles:profiles (
-          full_name
-        )
-      `
-      )
-      .eq("post_id", postId)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    console.log(`Curtidas carregadas: ${likes?.length || 0}`, likes);
-
-    // Ajuste contador se discrepância (opcional)
-    if (postEl) {
-      const likesSpan = postEl.querySelector(".likes");
-      if (likesSpan) {
-        const currentDisplayCount = parseInt(likesSpan.textContent.split(" ")[0]) || 0;
-        const actualCount = likes?.length || 0;
-        if (currentDisplayCount !== actualCount) {
-          likesSpan.textContent = actualCount + " curtidas";
-        }
-      }
-    }
-
-    if (!likes || likes.length === 0) {
-      likesList.innerHTML = `
-        <div class="likes-empty">
-          <i class="far fa-heart"></i>
-          <p>Ninguém curtiu ainda</p>
-          <small>Seja o primeiro a curtir!</small>
-        </div>
-      `;
-      return;
-    }
-
-    const header = document.createElement("div");
-    header.className = "likes-count-header";
-    header.textContent = `${likes.length} ${likes.length === 1 ? "curtida" : "curtidas"}`;
-
-    const usersList = document.createElement("div");
-
-    likes.forEach((like) => {
-      const userDiv = document.createElement("div");
-      userDiv.className = "like-user";
-
-      const avatarDiv = document.createElement("div");
-      avatarDiv.className = "like-user-avatar";
-
-      let userName = "Usuário";
-      let initials = "U";
-      const isCurrentUser = like.user_id === currentUser?.id;
-
-      if (like.profiles && like.profiles.full_name) {
-        userName = like.profiles.full_name;
-        initials = userName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-      } else if (isCurrentUser && currentProfile?.full_name) {
-        userName = currentProfile.full_name;
-        initials = userName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2);
-      } else {
-        userName = "Usuário";
-        initials = "U";
-      }
-
-      if (isCurrentUser) userName += " (Você)";
-
-      avatarDiv.textContent = initials;
-      avatarDiv.title = userName;
-
-      const infoDiv = document.createElement("div");
-
-      const nameDiv = document.createElement("div");
-      nameDiv.className = "like-user-name";
-      nameDiv.textContent = userName;
-
-      const dateDiv = document.createElement("div");
-      dateDiv.className = "like-user-date";
-      dateDiv.textContent = `Curtiu em ${fmtDateBR(like.created_at)}`;
-
-      infoDiv.appendChild(nameDiv);
-      infoDiv.appendChild(dateDiv);
-
-      userDiv.appendChild(avatarDiv);
-      userDiv.appendChild(infoDiv);
-
-      usersList.appendChild(userDiv);
-    });
-
-    likesList.innerHTML = "";
-    likesList.appendChild(header);
-    likesList.appendChild(usersList);
-  } catch (error) {
-    console.error("Erro ao carregar curtidas:", error);
-    likesList.innerHTML = `
-      <div class="likes-empty">
-        <i class="fas fa-exclamation-circle"></i>
-        <p>Erro ao carregar curtidas</p>
-        <small>Tente novamente mais tarde</small>
-      </div>
-    `;
-  }
 }
 
-// Fechar modal de curtidas
 function fecharModalCurtidas() {
   likesModal.classList.remove("show");
   likesModal.setAttribute("aria-hidden", "true");
@@ -433,138 +317,167 @@ likesModal?.addEventListener("click", (e) => {
   if (e.target === likesModal) fecharModalCurtidas();
 });
 
-// ----------------- Auth / Perfil -----------------
-async function init() {
-  const {
-    data: { session },
-  } = await supa.auth.getSession();
-
-  if (!session) {
+// ----------------- AUTH -----------------
+async function requireAuth() {
+  const { data, error } = await supa.auth.getUser();
+  if (error) throw error;
+  if (!data?.user) {
     window.location.href = "index.html";
-    return;
+    return null;
   }
+  currentUser = data.user;
+  return data.user;
+}
 
-  currentUser = session.user;
-
-  const { data: profile, error } = await supa
+async function loadProfile() {
+  if (!currentUser) return null;
+  const { data, error } = await supa
     .from("profiles")
-    .select("id, role, full_name")
+    .select("id, full_name, role")
     .eq("id", currentUser.id)
     .single();
 
   if (error) {
-    console.error(error);
-    alert("Erro ao carregar perfil.");
-    return;
+    console.error("Erro ao carregar profile:", error);
+    return null;
   }
-
-  currentProfile = profile;
+  currentProfile = data;
   setTopbarTitle();
-
-  // Somente admin pode postar: esconde o +
-  if (currentProfile.role !== "admin") {
-    if (addPostBtn) addPostBtn.style.display = "none";
-  } else {
-    if (addPostBtn) addPostBtn.style.display = "flex";
-  }
-
-  applyThemeToDynamicElements();
-  await carregarFeed();
+  return data;
 }
 
-init();
+async function loadProfilesMap() {
+  const { data, error } = await supa.from("profiles").select("id, full_name");
+  if (!error && Array.isArray(data)) {
+    profilesMap = {};
+    data.forEach((p) => {
+      profilesMap[p.id] = p.full_name || "Usuário";
+    });
+  }
+}
 
-// ----------------- Feed -----------------
+// ----------------- TEMA (botão) -----------------
+function initTheme() {
+  const saved = localStorage.getItem("theme") || "dark";
+  document.documentElement.setAttribute("data-theme", saved);
+}
+
+btnTheme?.addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme") || "dark";
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+  applyThemeToDynamicElements();
+});
+
+// ----------------- LOAD FEED -----------------
 async function carregarFeed() {
-  feed.innerHTML = "";
+  if (!feed) return;
 
+  feed.innerHTML = `<div class="loading">Carregando feed...</div>`;
+
+  // posts (mais recente primeiro)
   const { data: posts, error } = await supa
-    .from("v_feed")
+    .from("posts")
     .select("*")
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error(error);
-    alert("Erro ao carregar feed.");
+    feed.innerHTML = `<div class="error">Erro ao carregar feed.</div>`;
     return;
   }
 
-  // buscar nomes para o author_name (caso a view não traga)
-  const userIds = [...new Set((posts || []).map((p) => p.user_id).filter(Boolean))];
+  // likes / comments counts (via views ou columns)
+  // Se seu schema não tem likes_count/comments_count, esse fallback mantém 0 e atualiza via queries depois.
+  const postList = Array.isArray(posts) ? posts : [];
+  feed.innerHTML = "";
 
-  profilesMap = {};
-  if (userIds.length) {
-    const { data: profs, error: profErr } = await supa
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", userIds);
+  for (const post of postList) {
+    // buscar contagem de curtidas
+    const { count: likesCount } = await supa
+      .from("likes")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id);
 
-    if (profErr) {
-      console.warn("Não consegui carregar nomes de profiles (provável RLS):", profErr);
-    } else {
-      profilesMap = Object.fromEntries((profs || []).map((p) => [p.id, p.full_name]));
-    }
-  }
+    // buscar contagem de comentários
+    const { count: commentsCount } = await supa
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("post_id", post.id);
 
-  for (const post of posts || []) {
-    const nameFromProfiles = profilesMap[post.user_id];
-    if (!post.author_name && nameFromProfiles) post.author_name = nameFromProfiles;
+    post.likes_count = likesCount ?? post.likes_count ?? 0;
+    post.comments_count = commentsCount ?? post.comments_count ?? 0;
 
-    const card = await renderPost(post);
-    feed.appendChild(card);
+    const postEl = await renderPost(post);
+    feed.appendChild(postEl);
   }
 
   applyThemeToDynamicElements();
 }
 
-function fmtDateBR(isoString) {
-  if (!isoString) return "";
-  const d = new Date(isoString);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear()).slice(-2);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${yy}, ${hh}:${mi}`;
+// ----------------- FULLSCREEN IMG -----------------
+function abrirImagemTelaCheia(imgUrl, imgContainerRef) {
+  const modal = document.createElement("div");
+  modal.className = "fullscreen-modal";
+
+  const fullscreenImg = document.createElement("img");
+  fullscreenImg.src = imgUrl;
+  fullscreenImg.className = "fullscreen-img";
+
+  modal.appendChild(fullscreenImg);
+  document.body.appendChild(modal);
+
+  modal.addEventListener("dblclick", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await handleLike(post, postEl, imgContainerRef, true);
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
 }
 
-// Função para criar animação de coração
-function criarAnimacaoCurtida(container, isLiked) {
+// ----------------- Like Animation -----------------
+function criarAnimacaoCurtida(container, fromDblClick = false) {
   if (!container) return;
 
   const heart = document.createElement("div");
-  heart.innerHTML = isLiked ? "❤️" : "🤍";
+  heart.textContent = "❤️";
   heart.style.position = "absolute";
-  heart.style.fontSize = "70px";
-  heart.style.opacity = "1";
-  heart.style.transform = "translate(-50%, -50%) scale(1)";
-  heart.style.transition = "all 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55)";
-  heart.style.pointerEvents = "none";
-  heart.style.top = "50%";
   heart.style.left = "50%";
-  heart.style.zIndex = "100";
-  heart.style.textShadow = isLiked
-    ? "0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.6)"
-    : "0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.6)";
-  heart.style.filter = "drop-shadow(0 0 10px currentColor)";
+  heart.style.top = "50%";
+  heart.style.transform = "translate(-50%, -50%) scale(0.5)";
+  heart.style.fontSize = fromDblClick ? "60px" : "46px";
+  heart.style.opacity = "0";
+  heart.style.pointerEvents = "none";
+  heart.style.transition = "all 0.25s ease";
+
+  // Garante que o container esteja relativo
+  const oldPos = container.style.position;
+  if (!oldPos || oldPos === "static") container.style.position = "relative";
 
   container.appendChild(heart);
 
-  setTimeout(() => {
-    heart.style.opacity = "0.9";
-    heart.style.transform = "translate(-50%, -150%) scale(1.2)";
-  }, 50);
+  requestAnimationFrame(() => {
+    heart.style.opacity = "1";
+    heart.style.transform = "translate(-50%, -50%) scale(1)";
+  });
 
   setTimeout(() => {
     heart.style.opacity = "0";
-    heart.style.transform = "translate(-50%, -250%) scale(0.5)";
-    setTimeout(() => {
-      if (heart.parentNode) heart.parentNode.removeChild(heart);
-    }, 800);
-  }, 500);
+    heart.style.transform = "translate(-50%, -50%) scale(1.4)";
+  }, 280);
+
+  setTimeout(() => {
+    container.removeChild(heart);
+  }, 600);
 }
 
+// ----------------- Render Post -----------------
 async function renderPost(post) {
   post.likes_count = post.likes_count ?? 0;
   post.comments_count = post.comments_count ?? 0;
@@ -582,103 +495,84 @@ async function renderPost(post) {
   header.style.alignItems = "center";
   header.style.justifyContent = "space-between";
   header.style.gap = "10px";
-  header.style.padding = "12px 12px 0";
+  header.style.padding = "12px 16px";
+  header.style.borderBottom = "1px solid var(--border-light)";
 
   const left = document.createElement("div");
   left.style.display = "flex";
   left.style.flexDirection = "column";
   left.style.gap = "2px";
 
-  const author = document.createElement("div");
-  author.style.fontWeight = "800";
-  author.style.fontSize = "14px";
-  author.style.color = "var(--text-primary)";
-  author.textContent = post.author_name || profilesMap[post.user_id] || "Usuário";
+  const authorName = document.createElement("div");
+  authorName.style.fontWeight = "900";
+  authorName.style.color = "var(--text-primary)";
+  authorName.textContent = profilesMap[post.user_id] || "Usuário";
 
   const date = document.createElement("div");
   date.style.fontSize = "12px";
   date.style.color = "var(--text-muted)";
-  date.textContent = fmtDateBR(post.created_at);
+  date.textContent = new Date(post.created_at).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-  left.appendChild(author);
+  left.appendChild(authorName);
   left.appendChild(date);
 
-  header.appendChild(left);
+  const right = document.createElement("div");
+  right.style.display = "flex";
+  right.style.gap = "8px";
+  right.style.alignItems = "center";
 
-  // Botão excluir post (admin)
   if (isAdmin) {
-    const delPostBtn = makeIconButton({ title: "Excluir post", variant: "danger" });
-    delPostBtn.addEventListener("click", async () => {
-      const ok = confirm("Excluir este post? Isso remove o post e a imagem (se houver).");
+    const delBtn = makeIconButton({ title: "Excluir post", variant: "danger", icon: "trash" });
+    delBtn.addEventListener("click", async () => {
+      const ok = confirm("Excluir este post?");
       if (!ok) return;
 
-      delPostBtn.disabled = true;
-      delPostBtn.style.opacity = "0.6";
-      delPostBtn.style.pointerEvents = "none";
-
       try {
+        // remover imagem se tiver
         if (post.image_url) {
-          const { error: stErr } = await supa.storage.from("posts").remove([post.image_url]);
-          if (stErr) console.warn("Falha ao remover imagem do storage:", stErr);
+          await supa.storage.from("posts").remove([post.image_url]);
         }
 
-        const { error: dbErr } = await supa.from("posts").delete().eq("id", post.id);
-        if (dbErr) throw dbErr;
+        const { error } = await supa.from("posts").delete().eq("id", post.id);
+        if (error) throw error;
 
-        postEl.remove();
+        await carregarFeed();
       } catch (e) {
         console.error(e);
         alert(e?.message || "Erro ao excluir post.");
-      } finally {
-        delPostBtn.disabled = false;
-        delPostBtn.style.opacity = "1";
-        delPostBtn.style.pointerEvents = "auto";
       }
     });
-
-    header.appendChild(delPostBtn);
-  } else {
-    const spacer = document.createElement("div");
-    spacer.style.width = "34px";
-    spacer.style.height = "34px";
-    header.appendChild(spacer);
+    right.appendChild(delBtn);
   }
+
+  header.appendChild(left);
+  header.appendChild(right);
 
   postEl.appendChild(header);
 
-  // Espaço
-  const space = document.createElement("div");
-  space.style.height = "12px";
-  postEl.appendChild(space);
-
-  // Conteúdo visual (imagem ou placeholder)
+  // Imagem (se houver)
   let visualContainer = null;
-  let imgUrl = "";
 
   if (hasImage) {
-    imgUrl = getPublicImageUrl(post.image_url);
-
     const imgContainer = document.createElement("div");
-    imgContainer.style.position = "relative";
-    imgContainer.style.cursor = "pointer";
-    imgContainer.style.overflow = "hidden";
-    imgContainer.style.width = "100%";
-    imgContainer.style.height = "auto";
-    imgContainer.style.userSelect = "none";
+    imgContainer.className = "img-container";
+
+    const imgUrl = supa.storage.from("posts").getPublicUrl(post.image_url).data.publicUrl;
 
     const img = document.createElement("img");
     img.src = imgUrl;
     img.alt = "Post";
-    img.style.width = "100%";
-    img.style.display = "block";
-    img.style.maxHeight = "520px";
-    img.style.objectFit = "cover";
-    img.style.background = "var(--bg-secondary)";
-    img.style.transition = "transform 0.3s ease";
-    img.style.userSelect = "none";
-    img.style.pointerEvents = "none";
+    img.loading = "lazy";
 
+    // Overlay hover
     const overlay = document.createElement("div");
+    overlay.className = "img-overlay";
     overlay.style.position = "absolute";
     overlay.style.top = "0";
     overlay.style.left = "0";
@@ -755,47 +649,23 @@ async function renderPost(post) {
     postEl.appendChild(imgContainer);
     visualContainer = imgContainer;
   } else {
-    // Placeholder bonito para posts sem imagem
-    const box = document.createElement("div");
-    box.style.width = "100%";
-    box.style.padding = "18px 14px";
-    box.style.borderRadius = "14px";
-    box.style.border = "1px solid var(--border-color)";
-    box.style.background = "var(--bg-secondary)";
-    box.style.display = "flex";
-    box.style.alignItems = "center";
-    box.style.justifyContent = "space-between";
-    box.style.gap = "10px";
+    // Post sem imagem: mostra apenas o texto (sem "Post sem imagem" e sem emojis)
+    const textBox = document.createElement("div");
+    textBox.style.width = "100%";
+    textBox.style.padding = "18px 14px";
+    textBox.style.borderRadius = "14px";
+    textBox.style.border = "1px solid var(--border-color)";
+    textBox.style.background = "var(--bg-secondary)";
+    textBox.style.whiteSpace = "pre-wrap";
+    textBox.style.wordBreak = "break-word";
+    textBox.style.fontSize = "15px";
+    textBox.style.color = "var(--text-primary)";
+    textBox.style.lineHeight = "1.5";
 
-    const leftInfo = document.createElement("div");
-    leftInfo.style.display = "flex";
-    leftInfo.style.flexDirection = "column";
-    leftInfo.style.gap = "4px";
+    textBox.textContent = post.caption || "";
 
-    const tag = document.createElement("div");
-    tag.textContent = "📝 Recado";
-    tag.style.fontWeight = "900";
-    tag.style.fontSize = "13px";
-    tag.style.color = "var(--text-primary)";
-
-    const hint = document.createElement("div");
-    hint.textContent = "Post sem imagem";
-    hint.style.fontSize = "12px";
-    hint.style.color = "var(--text-muted)";
-
-    leftInfo.appendChild(tag);
-    leftInfo.appendChild(hint);
-
-    const badge = document.createElement("div");
-    badge.textContent = "✍️";
-    badge.style.fontSize = "18px";
-    badge.style.opacity = "0.8";
-
-    box.appendChild(leftInfo);
-    box.appendChild(badge);
-
-    postEl.appendChild(box);
-    visualContainer = box;
+    postEl.appendChild(textBox);
+    visualContainer = textBox;
   }
 
   // Actions
@@ -811,9 +681,21 @@ async function renderPost(post) {
   postEl.appendChild(actions);
 
   const likesSpan = postEl.querySelector(".likes");
-  likesSpan.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    await abrirModalCurtidas(post.id, postEl);
+  likesSpan.addEventListener("click", async () => {
+    try {
+      const { data, error } = await supa
+        .from("likes")
+        .select("user_id, profiles(full_name, email)")
+        .eq("post_id", post.id);
+
+      if (error) throw error;
+
+      const users = (data || []).map((l) => l.profiles).filter(Boolean);
+      abrirModalCurtidas(users);
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || "Erro ao carregar curtidas.");
+    }
   });
 
   likesSpan.addEventListener("mouseenter", () => {
@@ -826,10 +708,12 @@ async function renderPost(post) {
     likesSpan.style.textDecoration = "none";
   });
 
-  // Caption
-  const caption = document.createElement("p");
-  caption.textContent = post.caption || "";
-  postEl.appendChild(caption);
+  // Caption (para posts com imagem)
+  if (hasImage) {
+    const caption = document.createElement("p");
+    caption.textContent = post.caption || "";
+    postEl.appendChild(caption);
+  }
 
   // Comments
   const commentsWrap = document.createElement("div");
@@ -844,132 +728,51 @@ async function renderPost(post) {
   input.type = "text";
   input.placeholder = "Adicionar um comentário...";
   input.style.color = "var(--text-primary)";
-  input.style.backgroundColor = "var(--input-bg)";
-  input.style.borderColor = "var(--border-color)";
-  inputRow.appendChild(input);
+  input.style.backgroundColor = "var(--bg-secondary)";
+  input.style.border = "1px solid var(--border-color)";
+  input.style.flex = "1";
+  input.style.padding = "10px 12px";
+  input.style.borderRadius = "14px";
 
   const sendBtn = document.createElement("button");
   sendBtn.type = "button";
-  sendBtn.setAttribute("aria-label", "Enviar comentário");
-  sendBtn.textContent = "➤";
-  sendBtn.style.width = "40px";
-  sendBtn.style.height = "36px";
-  sendBtn.style.borderRadius = "10px";
+  sendBtn.textContent = "▶";
+  sendBtn.style.width = "44px";
+  sendBtn.style.height = "38px";
+  sendBtn.style.borderRadius = "12px";
   sendBtn.style.border = "1px solid var(--border-color)";
   sendBtn.style.background = "var(--button-bg)";
-  sendBtn.style.color = "var(--text-primary)";
   sendBtn.style.cursor = "pointer";
-  sendBtn.style.transition = "background .15s ease, transform .15s ease";
-  sendBtn.addEventListener("mouseenter", () => {
-    sendBtn.style.background = "var(--button-hover)";
-    sendBtn.style.transform = "translateY(-1px)";
-  });
-  sendBtn.addEventListener("mouseleave", () => {
-    sendBtn.style.background = "var(--button-bg)";
-    sendBtn.style.transform = "translateY(0)";
-  });
+  sendBtn.style.color = "var(--text-primary)";
+  sendBtn.style.fontWeight = "900";
 
+  inputRow.appendChild(input);
   inputRow.appendChild(sendBtn);
 
   const ul = document.createElement("ul");
 
   const seeMoreContainer = document.createElement("div");
-  seeMoreContainer.style.marginTop = "10px";
-  seeMoreContainer.style.display = "none";
-
-  const seeMoreBtn = document.createElement("button");
-  seeMoreBtn.type = "button";
-  seeMoreBtn.className = "see-more-comments";
-  seeMoreBtn.textContent = "Ver mais comentários";
-  seeMoreBtn.style.width = "100%";
-  seeMoreBtn.style.padding = "10px";
-  seeMoreBtn.style.borderRadius = "10px";
-  seeMoreBtn.style.border = "1px solid var(--border-color)";
-  seeMoreBtn.style.background = "var(--button-bg)";
-  seeMoreBtn.style.color = "var(--text-primary)";
-  seeMoreBtn.style.cursor = "pointer";
-  seeMoreBtn.style.fontSize = "14px";
-  seeMoreBtn.style.fontWeight = "600";
-  seeMoreBtn.style.transition = "all 0.2s ease";
-
-  seeMoreBtn.addEventListener("mouseenter", () => {
-    seeMoreBtn.style.background = "var(--button-hover)";
-    seeMoreBtn.style.transform = "translateY(-1px)";
-  });
-
-  seeMoreBtn.addEventListener("mouseleave", () => {
-    seeMoreBtn.style.background = "var(--button-bg)";
-    seeMoreBtn.style.transform = "translateY(0)";
-  });
-
-  seeMoreBtn.addEventListener("click", () => {
-    abrirModalComentarios(post.id, post.comments_count);
-  });
-
-  seeMoreContainer.appendChild(seeMoreBtn);
+  seeMoreContainer.className = "see-more-comments";
 
   commentsWrap.appendChild(inputRow);
   commentsWrap.appendChild(ul);
   commentsWrap.appendChild(seeMoreContainer);
+
   postEl.appendChild(commentsWrap);
 
-  // LIKE
   const likeBtn = postEl.querySelector(".like-btn");
 
-  const { data: likedRow } = await supa
+  // check se usuário curtiu
+  const { data: likedData } = await supa
     .from("likes")
-    .select("post_id")
+    .select("id")
     .eq("post_id", post.id)
     .eq("user_id", currentUser.id)
     .maybeSingle();
 
-  let liked = !!likedRow;
-  if (liked) {
+  if (likedData) {
     likeBtn.classList.add("liked");
     likeBtn.textContent = "❤️";
-  }
-
-  // Tela cheia (apenas se tem imagem)
-  function abrirImagemTelaCheia(url, imgContainerRef) {
-    const modal = document.createElement("div");
-    modal.className = "fullscreen-modal";
-    modal.style.position = "fixed";
-    modal.style.top = "0";
-    modal.style.left = "0";
-    modal.style.width = "100vw";
-    modal.style.height = "100vh";
-    modal.style.backgroundColor = "rgba(0,0,0,0.95)";
-    modal.style.display = "flex";
-    modal.style.alignItems = "center";
-    modal.style.justifyContent = "center";
-    modal.style.zIndex = "9999";
-    modal.style.cursor = "pointer";
-    modal.style.backdropFilter = "blur(10px)";
-
-    const fullscreenImg = document.createElement("img");
-    fullscreenImg.src = url;
-    fullscreenImg.style.maxWidth = "90vw";
-    fullscreenImg.style.maxHeight = "90vh";
-    fullscreenImg.style.objectFit = "contain";
-    fullscreenImg.style.borderRadius = "10px";
-    fullscreenImg.style.cursor = "default";
-    fullscreenImg.style.userSelect = "none";
-    fullscreenImg.style.pointerEvents = "none";
-
-    modal.appendChild(fullscreenImg);
-    document.body.appendChild(modal);
-
-    modal.addEventListener("dblclick", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      await handleLike(post, postEl, imgContainerRef, true);
-    });
-
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal);
-      }
-    });
   }
 
   // Função de curtir reutilizável
@@ -978,40 +781,38 @@ async function renderPost(post) {
 
     const likeBtnLocal = postElement.querySelector(".like-btn");
     const likesSpanLocal = postElement.querySelector(".likes");
-    const alreadyLiked = likeBtnLocal.classList.contains("liked");
 
-    if (alreadyLiked) {
-      const { error } = await supa
-        .from("likes")
-        .delete()
-        .eq("post_id", postObj.id)
-        .eq("user_id", currentUser.id);
+    const { data: existing } = await supa
+      .from("likes")
+      .select("id")
+      .eq("post_id", postObj.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
 
+    // Se já curtiu -> remove
+    if (existing?.id) {
+      const { error } = await supa.from("likes").delete().eq("id", existing.id);
       if (error) {
         console.error(error);
-        alert("Erro ao remover curtida.");
         return;
       }
 
+      postObj.likes_count = Math.max(0, (postObj.likes_count || 0) - 1);
       likeBtnLocal.classList.remove("liked");
       likeBtnLocal.textContent = "🤍";
-      postObj.likes_count = Math.max(0, postObj.likes_count - 1);
-
-      if (showAnimation) criarAnimacaoCurtida(containerForAnim, false);
     } else {
+      // curtir
       const { error } = await supa
         .from("likes")
         .insert({ post_id: postObj.id, user_id: currentUser.id });
-
       if (error) {
         console.error(error);
-        alert("Erro ao curtir.");
         return;
       }
 
+      postObj.likes_count = (postObj.likes_count || 0) + 1;
       likeBtnLocal.classList.add("liked");
       likeBtnLocal.textContent = "❤️";
-      postObj.likes_count += 1;
 
       if (showAnimation) criarAnimacaoCurtida(containerForAnim, true);
     }
@@ -1030,24 +831,23 @@ async function renderPost(post) {
   await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
 
   async function enviarComentario() {
-    const content = input.value.trim();
-    if (!content) return;
+    const text = input.value.trim();
+    if (!text) return;
 
     sendBtn.disabled = true;
-    sendBtn.style.opacity = "0.6";
+    sendBtn.style.opacity = "0.7";
+    sendBtn.style.pointerEvents = "none";
 
     try {
       const { error } = await supa
         .from("comments")
-        .insert({ post_id: post.id, user_id: currentUser.id, content });
+        .insert({ post_id: post.id, user_id: currentUser.id, content: text });
 
       if (error) throw error;
 
       input.value = "";
-      post.comments_count += 1;
-
-      commentsCountSpan.textContent =
-        post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
+      post.comments_count = (post.comments_count || 0) + 1;
+      commentsCountSpan.textContent = post.comments_count + " comentários";
 
       await carregarComentariosRecentes(post.id, ul, seeMoreContainer, post);
     } catch (e) {
@@ -1056,24 +856,27 @@ async function renderPost(post) {
     } finally {
       sendBtn.disabled = false;
       sendBtn.style.opacity = "1";
+      sendBtn.style.pointerEvents = "auto";
     }
   }
 
-  input.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") await enviarComentario();
-  });
   sendBtn.addEventListener("click", enviarComentario);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") enviarComentario();
+  });
 
   return postEl;
 }
 
-// Função para carregar apenas 3 comentários MAIS RECENTES
-async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
+// ----------------- Comments helpers -----------------
+async function carregarComentariosRecentes(postId, ul, seeMoreContainer, postObj) {
   ul.innerHTML = "";
+  seeMoreContainer.innerHTML = "";
 
-  const { data, error } = await supa
+  // carrega últimos 3
+  const { data: comments, error } = await supa
     .from("comments")
-    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
+    .select("id, content, created_at, user_id")
     .eq("post_id", postId)
     .order("created_at", { ascending: false })
     .limit(3);
@@ -1083,419 +886,134 @@ async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post) {
     return;
   }
 
-  const commentsToShow = data || [];
-  const isAdmin = currentProfile?.role === "admin";
+  const list = Array.isArray(comments) ? comments.slice().reverse() : [];
 
-  if (post.comments_count > 3) {
-    seeMoreContainer.style.display = "block";
-  } else {
-    seeMoreContainer.style.display = "none";
+  for (const c of list) {
+    ul.appendChild(renderCommentItem(c, postId, postObj));
   }
 
-  for (const c of commentsToShow) {
-    const li = document.createElement("li");
-    li.style.display = "flex";
-    li.style.alignItems = "flex-start";
-    li.style.justifyContent = "space-between";
-    li.style.gap = "12px";
-
-    const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.flexDirection = "column";
-    left.style.gap = "2px";
-    left.style.flex = "1";
-
-    const authorName = (c.profiles?.full_name || "Usuário").trim();
-
-    const meta = document.createElement("div");
-    meta.style.fontWeight = "800";
-    meta.style.fontSize = "13px";
-    meta.style.color = "var(--text-primary)";
-    meta.textContent = `${authorName}  ${fmtDateBR(c.created_at)}`;
-
-    const txt = document.createElement("div");
-    txt.style.fontSize = "13px";
-    txt.style.color = "var(--text-secondary)";
-    txt.textContent = c.content;
-
-    left.appendChild(meta);
-    left.appendChild(txt);
-
-    li.appendChild(left);
-
-    const canDelete = isAdmin || c.user_id === currentUser?.id;
-    if (canDelete) {
-      const delBtn = makeIconButton({ title: "Excluir comentário", variant: "danger" });
-
-      delBtn.addEventListener("click", async () => {
-        const ok = confirm("Excluir este comentário?");
-        if (!ok) return;
-
-        delBtn.disabled = true;
-        delBtn.style.opacity = "0.6";
-        delBtn.style.pointerEvents = "none";
-
-        try {
-          const { error } = await supa.from("comments").delete().eq("id", c.id);
-          if (error) throw error;
-
-          post.comments_count = Math.max(0, post.comments_count - 1);
-          const commentsCountSpan = ul.closest(".post")?.querySelector(".comments-count");
-          if (commentsCountSpan) {
-            commentsCountSpan.textContent =
-              post.comments_count + (post.comments_count === 1 ? " comentário" : " comentários");
-          }
-
-          li.remove();
-
-          if (post.comments_count <= 3) {
-            seeMoreContainer.style.display = "none";
-          }
-        } catch (e) {
-          console.error(e);
-          alert(e?.message || "Erro ao excluir comentário.");
-        } finally {
-          delBtn.disabled = false;
-          delBtn.style.opacity = "1";
-          delBtn.style.pointerEvents = "auto";
-        }
-      });
-
-      li.appendChild(delBtn);
-    } else {
-      const spacer = document.createElement("div");
-      spacer.style.width = "34px";
-      spacer.style.height = "34px";
-      li.appendChild(spacer);
-    }
-
-    ul.appendChild(li);
-  }
-}
-
-// Função para abrir modal com todos os comentários
-async function abrirModalComentarios(postId, totalComments) {
-  const modal = document.createElement("div");
-  modal.className = "comments-modal";
-  modal.style.position = "fixed";
-  modal.style.top = "0";
-  modal.style.left = "0";
-  modal.style.width = "100vw";
-  modal.style.height = "100vh";
-  modal.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-  modal.style.display = "flex";
-  modal.style.alignItems = "center";
-  modal.style.justifyContent = "center";
-  modal.style.zIndex = "10000";
-  modal.style.backdropFilter = "blur(10px)";
-  modal.style.padding = "20px";
-
-  const modalCard = document.createElement("div");
-  modalCard.className = "comments-modal-card";
-  modalCard.style.width = "100%";
-  modalCard.style.maxWidth = "500px";
-  modalCard.style.maxHeight = "80vh";
-  modalCard.style.background = "var(--bg-card)";
-  modalCard.style.border = "1px solid var(--border-color)";
-  modalCard.style.borderRadius = "20px";
-  modalCard.style.overflow = "hidden";
-  modalCard.style.display = "flex";
-  modalCard.style.flexDirection = "column";
-
-  const modalHeader = document.createElement("div");
-  modalHeader.style.display = "flex";
-  modalHeader.style.justifyContent = "space-between";
-  modalHeader.style.alignItems = "center";
-  modalHeader.style.padding = "16px 20px";
-  modalHeader.style.borderBottom = "1px solid var(--border-light)";
-  modalHeader.style.background = "var(--bg-secondary)";
-
-  const modalTitle = document.createElement("h3");
-  modalTitle.textContent = `Comentários (${totalComments})`;
-  modalTitle.style.color = "var(--text-primary)";
-  modalTitle.style.fontSize = "18px";
-  modalTitle.style.fontWeight = "700";
-  modalTitle.style.margin = "0";
-
-  const closeBtn = document.createElement("button");
-  closeBtn.innerHTML = "×";
-  closeBtn.style.background = "none";
-  closeBtn.style.border = "none";
-  closeBtn.style.color = "var(--text-primary)";
-  closeBtn.style.fontSize = "28px";
-  closeBtn.style.cursor = "pointer";
-  closeBtn.style.width = "40px";
-  closeBtn.style.height = "40px";
-  closeBtn.style.display = "flex";
-  closeBtn.style.alignItems = "center";
-  closeBtn.style.justifyContent = "center";
-  closeBtn.style.borderRadius = "10px";
-  closeBtn.style.transition = "background 0.2s ease";
-
-  closeBtn.addEventListener("mouseenter", () => {
-    closeBtn.style.background = "var(--button-bg)";
-  });
-
-  closeBtn.addEventListener("mouseleave", () => {
-    closeBtn.style.background = "none";
-  });
-
-  closeBtn.addEventListener("click", () => {
-    document.body.removeChild(modal);
-  });
-
-  modalHeader.appendChild(modalTitle);
-  modalHeader.appendChild(closeBtn);
-
-  const commentsList = document.createElement("div");
-  commentsList.style.flex = "1";
-  commentsList.style.overflowY = "auto";
-  commentsList.style.padding = "20px";
-
-  const inputContainer = document.createElement("div");
-  inputContainer.style.padding = "0 20px 20px";
-  inputContainer.style.borderTop = "1px solid var(--border-light)";
-
-  const inputRow = document.createElement("div");
-  inputRow.style.display = "flex";
-  inputRow.style.gap = "10px";
-  inputRow.style.alignItems = "center";
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "Adicionar um comentário...";
-  input.style.flex = "1";
-  input.style.padding = "12px 14px";
-  input.style.background = "var(--input-bg)";
-  input.style.border = "1px solid var(--border-color)";
-  input.style.borderRadius = "12px";
-  input.style.color = "var(--text-primary)";
-  input.style.outline = "none";
-
-  const sendBtn = document.createElement("button");
-  sendBtn.type = "button";
-  sendBtn.textContent = "➤";
-  sendBtn.style.width = "40px";
-  sendBtn.style.height = "40px";
-  sendBtn.style.borderRadius = "10px";
-  sendBtn.style.border = "1px solid var(--border-color)";
-  sendBtn.style.background = "var(--button-bg)";
-  sendBtn.style.color = "var(--text-primary)";
-  sendBtn.style.cursor = "pointer";
-  sendBtn.style.transition = "background .15s ease";
-
-  sendBtn.addEventListener("mouseenter", () => {
-    sendBtn.style.background = "var(--button-hover)";
-  });
-
-  sendBtn.addEventListener("mouseleave", () => {
-    sendBtn.style.background = "var(--button-bg)";
-  });
-
-  inputRow.appendChild(input);
-  inputRow.appendChild(sendBtn);
-  inputContainer.appendChild(inputRow);
-
-  modalCard.appendChild(modalHeader);
-  modalCard.appendChild(commentsList);
-  modalCard.appendChild(inputContainer);
-  modal.appendChild(modalCard);
-  document.body.appendChild(modal);
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      document.body.removeChild(modal);
-    }
-  });
-
-  await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
-
-  async function enviarComentarioModal() {
-    const content = input.value.trim();
-    if (!content) return;
-
-    sendBtn.disabled = true;
-    sendBtn.style.opacity = "0.6";
-
-    try {
-      const { error } = await supa
-        .from("comments")
-        .insert({ post_id: postId, user_id: currentUser.id, content });
-
-      if (error) throw error;
-
-      input.value = "";
-      totalComments += 1;
-      modalTitle.textContent = `Comentários (${totalComments})`;
-
-      const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
-      if (postElement) {
-        const commentsCountSpan = postElement.querySelector(".comments-count");
-        if (commentsCountSpan) {
-          commentsCountSpan.textContent =
-            totalComments + (totalComments === 1 ? " comentário" : " comentários");
-        }
-        const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-        if (seeMoreContainer && totalComments > 3) {
-          seeMoreContainer.style.display = "block";
-        }
-      }
-
-      await carregarTodosComentarios(postId, commentsList, modalTitle, totalComments);
-    } catch (e) {
-      console.error(e);
-      alert(e?.message || "Erro ao comentar.");
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.style.opacity = "1";
-    }
-  }
-
-  input.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") await enviarComentarioModal();
-  });
-  sendBtn.addEventListener("click", enviarComentarioModal);
-}
-
-async function carregarTodosComentarios(postId, container, titleElement, totalComments) {
-  container.innerHTML = "";
-
-  const { data, error } = await supa
+  // total count
+  const { count: totalCount } = await supa
     .from("comments")
-    .select("id, content, created_at, user_id, profiles:profiles(full_name)")
+    .select("*", { count: "exact", head: true })
+    .eq("post_id", postId);
+
+  const total = totalCount ?? postObj.comments_count ?? 0;
+
+  if (total > 3) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = `Ver mais comentários (${total - 3})`;
+    btn.className = "btn-see-more";
+    btn.addEventListener("click", async () => {
+      await abrirListaCompletaComentarios(postId, ul, seeMoreContainer, postObj);
+    });
+    seeMoreContainer.appendChild(btn);
+  }
+}
+
+async function abrirListaCompletaComentarios(postId, ul, seeMoreContainer, postObj) {
+  ul.innerHTML = "";
+  seeMoreContainer.innerHTML = "";
+
+  const { data: comments, error } = await supa
+    .from("comments")
+    .select("id, content, created_at, user_id")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
   if (error) {
     console.error(error);
-    container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Erro ao carregar comentários</p>`;
     return;
   }
 
-  const isAdmin = currentProfile?.role === "admin";
-
-  if (!data || data.length === 0) {
-    container.innerHTML = `<p style="color: var(--text-muted); text-align: center;">Nenhum comentário ainda</p>`;
-    return;
-  }
-
-  if (titleElement && data.length !== totalComments) {
-    titleElement.textContent = `Comentários (${data.length})`;
-  }
-
-  for (const c of data) {
-    const commentDiv = document.createElement("div");
-    commentDiv.style.padding = "12px 0";
-    commentDiv.style.borderBottom = "1px solid var(--border-light)";
-
-    const authorName = (c.profiles?.full_name || "Usuário").trim();
-
-    const meta = document.createElement("div");
-    meta.style.display = "flex";
-    meta.style.justifyContent = "space-between";
-    meta.style.alignItems = "center";
-    meta.style.marginBottom = "6px";
-
-    const authorAndDate = document.createElement("div");
-    authorAndDate.style.display = "flex";
-    authorAndDate.style.gap = "8px";
-    authorAndDate.style.alignItems = "center";
-
-    const authorSpan = document.createElement("span");
-    authorSpan.style.fontWeight = "800";
-    authorSpan.style.fontSize = "13px";
-    authorSpan.style.color = "var(--text-primary)";
-    authorSpan.textContent = authorName;
-
-    const dateSpan = document.createElement("span");
-    dateSpan.style.fontSize = "12px";
-    dateSpan.style.color = "var(--text-muted)";
-    dateSpan.textContent = fmtDateBR(c.created_at);
-
-    authorAndDate.appendChild(authorSpan);
-    authorAndDate.appendChild(dateSpan);
-
-    meta.appendChild(authorAndDate);
-
-    const canDelete = isAdmin || c.user_id === currentUser?.id;
-    if (canDelete) {
-      const delBtn = document.createElement("button");
-      delBtn.innerHTML = "🗑️";
-      delBtn.style.background = "none";
-      delBtn.style.border = "none";
-      delBtn.style.color = "var(--text-muted)";
-      delBtn.style.cursor = "pointer";
-      delBtn.style.fontSize = "14px";
-      delBtn.style.padding = "4px 8px";
-      delBtn.style.borderRadius = "6px";
-      delBtn.style.transition = "all 0.2s ease";
-
-      delBtn.addEventListener("mouseenter", () => {
-        delBtn.style.color = "#ff3b5c";
-        delBtn.style.background = "rgba(255, 59, 92, 0.1)";
-      });
-
-      delBtn.addEventListener("mouseleave", () => {
-        delBtn.style.color = "var(--text-muted)";
-        delBtn.style.background = "none";
-      });
-
-      delBtn.addEventListener("click", async () => {
-        const ok = confirm("Excluir este comentário?");
-        if (!ok) return;
-
-        delBtn.disabled = true;
-        delBtn.style.opacity = "0.6";
-
-        try {
-          const { error } = await supa.from("comments").delete().eq("id", c.id);
-          if (error) throw error;
-
-          commentDiv.remove();
-
-          const currentCount = parseInt(titleElement.textContent.match(/\d+/)[0], 10);
-          titleElement.textContent = `Comentários (${currentCount - 1})`;
-
-          const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
-          if (postElement) {
-            const commentsCountSpan = postElement.querySelector(".comments-count");
-            if (commentsCountSpan) {
-              const newCount = currentCount - 1;
-              commentsCountSpan.textContent =
-                newCount + (newCount === 1 ? " comentário" : " comentários");
-            }
-
-            const seeMoreContainer = postElement.querySelector(".comments > div:last-child");
-            if (seeMoreContainer && currentCount - 1 <= 3) {
-              seeMoreContainer.style.display = "none";
-            }
-          }
-        } catch (e) {
-          console.error(e);
-          alert(e?.message || "Erro ao excluir comentário.");
-        } finally {
-          delBtn.disabled = false;
-          delBtn.style.opacity = "1";
-        }
-      });
-
-      meta.appendChild(delBtn);
-    }
-
-    const contentDiv = document.createElement("div");
-    contentDiv.style.fontSize = "14px";
-    contentDiv.style.color = "var(--text-secondary)";
-    contentDiv.style.lineHeight = "1.5";
-    contentDiv.textContent = c.content;
-
-    commentDiv.appendChild(meta);
-    commentDiv.appendChild(contentDiv);
-    container.appendChild(commentDiv);
-  }
+  const list = Array.isArray(comments) ? comments : [];
+  list.forEach((c) => ul.appendChild(renderCommentItem(c, postId, postObj)));
 }
 
-// ----------------- Postar (ADMIN) -----------------
-window.abrirGaleria = function abrirGaleria() {
+function renderCommentItem(comment, postId, postObj) {
+  const li = document.createElement("li");
+
+  const left = document.createElement("div");
+  left.style.display = "flex";
+  left.style.flexDirection = "column";
+  left.style.gap = "2px";
+
+  const name = document.createElement("div");
+  name.style.fontWeight = "900";
+  name.style.fontSize = "13px";
+  name.style.color = "var(--text-primary)";
+  name.textContent = profilesMap[comment.user_id] || "Usuário";
+
+  const content = document.createElement("div");
+  content.style.fontSize = "14px";
+  content.style.color = "var(--text-secondary)";
+  content.style.whiteSpace = "pre-wrap";
+  content.textContent = comment.content;
+
+  left.appendChild(name);
+  left.appendChild(content);
+
+  li.appendChild(left);
+
+  // Ações de editar/excluir comentário (somente admin)
+  const isAdmin = currentProfile?.role === "admin";
+  if (isAdmin) {
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "8px";
+    actions.style.marginLeft = "auto";
+
+    const editBtn = makeIconButton({ title: "Editar comentário", icon: "x" });
+    editBtn.textContent = "✎";
+    editBtn.style.fontSize = "14px";
+    editBtn.style.width = "32px";
+    editBtn.style.height = "32px";
+
+    const delBtn = makeIconButton({ title: "Excluir comentário", variant: "danger", icon: "trash" });
+
+    editBtn.addEventListener("click", async () => {
+      const novo = prompt("Editar comentário:", comment.content);
+      if (novo === null) return;
+      const txt = novo.trim();
+      if (!txt) return;
+
+      try {
+        const { error } = await supa.from("comments").update({ content: txt }).eq("id", comment.id);
+        if (error) throw error;
+        await carregarFeed();
+      } catch (e) {
+        console.error(e);
+        alert(e?.message || "Erro ao editar comentário.");
+      }
+    });
+
+    delBtn.addEventListener("click", async () => {
+      const ok = confirm("Excluir este comentário?");
+      if (!ok) return;
+
+      try {
+        const { error } = await supa.from("comments").delete().eq("id", comment.id);
+        if (error) throw error;
+
+        postObj.comments_count = Math.max(0, (postObj.comments_count || 0) - 1);
+        await carregarFeed();
+      } catch (e) {
+        console.error(e);
+        alert(e?.message || "Erro ao excluir comentário.");
+      }
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+  }
+
+  return li;
+}
+
+// ----------------- Botão + / File input -----------------
+function abrirGaleria() {
   if (!currentProfile || currentProfile.role !== "admin") return;
   openChoiceModal();
 };
@@ -1508,6 +1026,8 @@ fileInput?.addEventListener("change", () => {
 
   const reader = new FileReader();
   reader.onload = () => {
+    // Post com imagem: mostra a área de prévia e carrega a imagem
+    setPreviewVisible(true);
     if (previewImg) previewImg.src = reader.result;
     if (captionInput) captionInput.value = "";
     setModalOpen(true);
@@ -1521,7 +1041,10 @@ fileInput?.addEventListener("change", () => {
 function fecharModal() {
   setModalOpen(false);
   pendingFile = null;
-  if (previewImg) previewImg.src = "";
+
+  // Fecha sempre sem deixar "imagem quebrada" no próximo abrir (principalmente no modo sem imagem)
+  setPreviewVisible(false);
+
   if (captionInput) captionInput.value = "";
 }
 
@@ -1617,7 +1140,18 @@ const observer = new MutationObserver((mutations) => {
   });
 });
 
-observer.observe(document.documentElement, {
-  attributes: true,
-  attributeFilter: ["data-theme"],
-});
+observer.observe(document.documentElement, { attributes: true });
+
+// ----------------- Init -----------------
+(async function init() {
+  try {
+    initTheme();
+    await requireAuth();
+    await loadProfile();
+    await loadProfilesMap();
+    await carregarFeed();
+  } catch (e) {
+    console.error(e);
+    alert(e?.message || "Erro ao iniciar o feed.");
+  }
+})();
