@@ -2122,7 +2122,7 @@ btnNewPinned?.addEventListener("click", () => {
 
 
 // ----------------- Realtime (atualiza notificações/atividade ao vivo) -----------------
-let realtimeChannel = null;
+var realtimeChannel = window.__fsjpiiRealtimeChannel || null;
 
 function isViewActive(viewEl) {
   if (!viewEl) return false;
@@ -3969,7 +3969,7 @@ observer.observe(document.documentElement, {
   attributeFilter: ["data-theme"],
 });
 // ----------------- Realtime (atualiza notificações/atividade ao vivo) -----------------
-let realtimeChannel = null;
+var realtimeChannel = window.__fsjpiiRealtimeChannel || null;
 
 function isViewActive(viewEl) {
   if (!viewEl) return false;
