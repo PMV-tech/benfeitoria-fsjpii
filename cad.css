@@ -126,6 +126,25 @@ body {
   min-height: 100vh;
 }
 
+/* Fundo gradiente para tema claro - com bolinhas */
+[data-theme="light"] body {
+  background:
+    radial-gradient(ellipse at 20% 20%,
+      rgba(128, 0, 32, 0.08) 20%,
+      transparent 80%
+    ),
+    radial-gradient(ellipse at 80% 80%,
+      rgba(0, 71, 171, 0.08) 20%,
+      transparent 80%
+    ),
+    radial-gradient(ellipse at 50% 50%,
+      rgba(212, 175, 55, 0.06) 20%,
+      transparent 80%
+    ),
+    linear-gradient(135deg, #f8f1f1 0%, #f5f8fc 100%);
+  background-attachment: fixed;
+}
+
 /* FUNDO ANIMADO (EXATAMENTE IGUAL AO FEED) */
 #logoBg {
   position: fixed;
@@ -768,3 +787,4 @@ body {
     margin-top: 20px;
   }
 }
+
