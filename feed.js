@@ -17,8 +17,8 @@ const topbarTitle = document.querySelector(".topbar h2");
 
 // ===== WhatsApp (atalho fixo) =====
 // Troque o número abaixo (somente dígitos, com DDI). Ex: 5511999999999
-const WHATS_NUMBER = "5511999999999";
-const WHATS_TEXT = "Olá! Vim pelo app FSJPII.";
+const WHATS_NUMBER = "5511944809104";
+const WHATS_TEXT = "Olá! Vim pelo Web-Site da Benfeitoria FSJPII. O site está demais.";
 
 function ensureWhatsFab() {
   if (document.getElementById("whatsFab")) return;
@@ -4235,3 +4235,4 @@ function initRealtime() {
     console.warn("Realtime não disponível:", e?.message || e);
   }
 }
+
