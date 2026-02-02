@@ -17,7 +17,7 @@ const topbarTitle = document.querySelector(".topbar h2");
 
 // ===== WhatsApp (atalho fixo) =====
 // Troque o número abaixo (somente dígitos, com DDI). Ex: 5511999999999
-const WHATS_NUMBER = "5511944809104";
+const WHATS_NUMBER = "5511999999999";
 const WHATS_TEXT = "Olá! Vim pelo app FSJPII.";
 
 function ensureWhatsFab() {
@@ -51,6 +51,14 @@ function ensureWhatsFab() {
   `;
   document.body.appendChild(a);
 }
+
+// Keep WhatsApp button visible (even after reloads or dynamic DOM updates)
+document.addEventListener("DOMContentLoaded", () => {
+  try { ensureWhatsFab(); } catch (_) {}
+});
+setInterval(() => {
+  try { ensureWhatsFab(); } catch (_) {}
+}, 1500);
 
 // Botões
 const btnLogout = document.getElementById("btnLogout");
@@ -2274,6 +2282,7 @@ function initRealtime() {
 
 
 async function init() {
+  try { ensureWhatsFab(); } catch (_) {}
   let session = null;
   try {
     const { data, error } = await supa.auth.getSession();
