@@ -4221,4 +4221,3 @@ function initRealtime() {
     console.warn("Realtime não disponível:", e?.message || e);
   }
 }
-
