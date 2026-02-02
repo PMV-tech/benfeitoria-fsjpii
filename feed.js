@@ -332,7 +332,17 @@ function ensureEditProfileModal() {
         .update({ full_name: full_name || currentProfile.full_name, bio, avatar_url })
         .eq("id", currentUser.id);
 
-      if (error) throw error;
+      if (error) {
+        const msg = String(error.message || "");
+        const det = String(error.details || "");
+        // Seu schema tem uma constraint única (ex.: profiles_username_unique). 
+        // Se o nome já existe, mostramos uma mensagem amigável e não travamos o app.
+        if (msg.includes("profiles_username_unique") || msg.includes("duplicate key value") || det.includes("profiles_username_unique")) {
+          alert("Esse nome já está em uso. Escolha outro nome para salvar.");
+          return;
+        }
+        throw error;
+      }
 
       // refresh local profile
       currentProfile.full_name = full_name || currentProfile.full_name;
