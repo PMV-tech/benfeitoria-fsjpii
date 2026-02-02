@@ -2831,14 +2831,19 @@ async function renderPost(post) {
       }, 100);
     });
 
+    // Hover: aplica zoom suave apenas em imagens (vídeos mantêm estáveis)
     imgContainer.addEventListener("mouseenter", () => {
       overlay.style.opacity = "1";
-      img.style.transform = "scale(1.02)";
+      try {
+        if (typeof img !== "undefined" && img) img.style.transform = "scale(1.02)";
+      } catch {}
     });
 
     imgContainer.addEventListener("mouseleave", () => {
       overlay.style.opacity = "0";
-      img.style.transform = "scale(1)";
+      try {
+        if (typeof img !== "undefined" && img) img.style.transform = "scale(1)";
+      } catch {}
     });
 
     postEl.appendChild(imgContainer);
