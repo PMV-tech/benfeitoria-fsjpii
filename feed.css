@@ -1,3 +1,4 @@
+/* VARIÁVEIS DE TEMA (IGUAL AO CAD.HTML) */
 :root {
   /* Tema Escuro (Padrão) */
   --bg-primary: #0a0a0a;
@@ -19,22 +20,22 @@
   --danger-color: rgba(255, 80, 120, 0.9);
   --info-color: rgba(100, 150, 255, 0.9);
 
-  /* ✅ Altura única da topbar (bata com o layout) */
+  /* ✅ Altura única da topbar */
   --topbar-h: 62px;
 }
 
 [data-theme="light"] {
-  /* Tema Claro */
-  --bg-primary: #1d2a82;
-  --bg-secondary: #751e1e;
-  --bg-card: linear-gradient(145deg, #eaecfa, #fff4f4);
+  /* Tema Claro - EXATAMENTE IGUAL AO CAD.HTML */
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-card: linear-gradient(145deg, #ffffff, #f5f5f5);
   --text-primary: #222222;
   --text-secondary: #444444;
   --text-muted: rgba(0, 0, 0, 0.6);
   --border-color: rgba(0, 0, 0, 0.1);
   --border-light: rgba(0, 0, 0, 0.08);
   --shadow-color: rgba(0, 0, 0, 0.1);
-  --accent-gradient: linear-gradient(135deg, #b3adf8, rgb(114, 9, 9));
+  --accent-gradient: linear-gradient(90deg, #6a5cff, #8a2be2);
   --button-bg: rgba(0, 0, 0, 0.05);
   --button-hover: rgba(0, 0, 0, 0.1);
   --input-bg: rgba(0, 0, 0, 0.05);
@@ -45,12 +46,82 @@
   --info-color: rgba(80, 130, 240, 0.9);
 }
 
+/* REMOVER SCROLLBAR EM TODOS OS ELEMENTOS BASE */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Segoe UI", sans-serif;
+  font-family: 'Segoe UI', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ========== DESKTOP: SCROLL PERSONALIZADO ========== */
+/* Apenas em telas grandes (desktop) */
+@media (min-width: 901px) {
+  html, body {
+    height: 100%;
+    overflow: hidden; /* Remove scroll padrão do navegador no desktop */
+  }
+  
+  /* CONTAINER PRINCIPAL COM SCROLL PERSONALIZADO (APENAS DESKTOP) */
+  .app-scroll {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable both-edges;
+    
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #c9a23a rgba(255,255,255,0.08);
+  }
+  
+  /* Chrome/Edge/Opera/Safari */
+  .app-scroll::-webkit-scrollbar {
+    width: 12px;
+  }
+  
+  .app-scroll::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    margin: 10px 0;
+  }
+  
+  .app-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #d8b14a, #a67c00);
+    border-radius: 999px;
+    border: 3px solid rgba(0,0,0,0.25);
+  }
+  
+  .app-scroll::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #e6c15a, #b88900);
+  }
+}
+
+/* ========== MOBILE: SEM SCROLL PERSONALIZADO ========== */
+@media (max-width: 900px) {
+  html, body {
+    overflow: auto; /* Scroll nativo do navegador */
+    height: auto;
+  }
+  
+  .app-scroll {
+    position: relative;
+    height: auto;
+    overflow: visible; /* Sem scroll personalizado */
+  }
+  
+  /* Esconder scrollbar personalizada no mobile */
+  .app-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .app-scroll {
+    scrollbar-width: none;
+  }
 }
 
 /* ===================== FUNDO COM CORES DA LOGO ===================== */
@@ -61,6 +132,10 @@ body {
   margin: 0;
   overflow-x: hidden;
   position: relative;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: background 0.3s ease;
 }
 
 /* Fundo gradiente para tema escuro */
@@ -82,7 +157,7 @@ body {
   background-attachment: fixed;
 }
 
-/* Fundo gradiente para tema claro - com bolinhas */
+/* Fundo gradiente para tema claro - ATUALIZADO */
 [data-theme="light"] body {
   background:
     radial-gradient(ellipse at 20% 20%,
@@ -97,10 +172,11 @@ body {
       rgba(212, 175, 55, 0.06) 20%,
       transparent 80%
     ),
-    linear-gradient(135deg, #f8f1f1 0%, #f5f8fc 100%);
+    var(--bg-primary);
   background-attachment: fixed;
 }
 
+/* FUNDO ANIMADO (EXATAMENTE IGUAL AO CAD.HTML) */
 #logoBg {
   position: fixed;
   top: 0;
@@ -112,7 +188,7 @@ body {
   overflow: hidden;
 }
 
-/* Partículas distribuídas - MUITO LENTAS */
+/* Partículas distribuídas - MUITO LENTAS (EXATAMENTE IGUAL AO CAD.HTML) */
 .logo-particle {
   position: absolute;
   border-radius: 50%;
@@ -122,106 +198,99 @@ body {
   transition: opacity 1.0s ease;
 }
 
-/* CORES PARA TEMA ESCURO - FORTES */
+/* CORES PARA TEMA ESCURO - FORTES (EXATAMENTE IGUAL AO CAD.HTML) */
 [data-theme="dark"] .particle-wine {
-  background: radial-gradient(circle at 30% 30%,
+  background: radial-gradient(circle at 30% 30%, 
     rgba(180, 0, 45, 0.85),
     rgba(128, 0, 32, 0.7),
     transparent 65%
   );
-  box-shadow:
+  box-shadow: 
     0 0 20px rgba(180, 0, 45, 0.6),
     0 0 35px rgba(128, 0, 32, 0.3),
     inset 0 0 12px rgba(220, 80, 110, 0.3);
 }
 
 [data-theme="dark"] .particle-blue {
-  background: radial-gradient(circle at 30% 30%,
+  background: radial-gradient(circle at 30% 30%, 
     rgba(0, 100, 220, 0.85),
     rgba(0, 71, 171, 0.7),
     transparent 65%
   );
-  box-shadow:
+  box-shadow: 
     0 0 20px rgba(0, 100, 220, 0.6),
     0 0 35px rgba(0, 71, 171, 0.3),
     inset 0 0 12px rgba(100, 180, 255, 0.3);
 }
 
 [data-theme="dark"] .particle-gold {
-  background: radial-gradient(circle at 30% 30%,
+  background: radial-gradient(circle at 30% 30%, 
     rgba(240, 200, 70, 0.85),
     rgba(212, 175, 55, 0.7),
     transparent 65%
   );
-  box-shadow:
+  box-shadow: 
     0 0 20px rgba(240, 200, 70, 0.6),
     0 0 35px rgba(212, 175, 55, 0.3),
     inset 0 0 12px rgba(255, 235, 170, 0.3);
 }
 
-/* CORES PARA TEMA CLARO - SUAVES */
+/* CORES PARA TEMA CLARO - SUPER VISÍVEIS (EXATAMENTE IGUAL AO CAD.HTML) */
 [data-theme="light"] .particle-wine {
-  background: radial-gradient(circle at 30% 30%,
-    rgba(200, 50, 100, 0.4),
-    rgba(180, 40, 90, 0.3),
-    transparent 70%
+  background: radial-gradient(circle at 30% 30%, 
+    rgba(230, 60, 120, 0.95),
+    rgba(200, 40, 100, 0.85),
+    rgba(170, 20, 80, 0.75),
+    transparent 60%
   );
-  box-shadow:
-    0 0 15px rgba(200, 50, 100, 0.25),
-    0 0 25px rgba(180, 40, 90, 0.15),
-    inset 0 0 8px rgba(230, 120, 150, 0.2);
+  box-shadow: 
+    0 0 30px rgba(230, 60, 120, 0.8),
+    0 0 60px rgba(200, 40, 100, 0.5),
+    0 0 100px rgba(170, 20, 80, 0.3),
+    inset 0 0 20px rgba(255, 140, 180, 0.6);
 }
 
 [data-theme="light"] .particle-blue {
-  background: radial-gradient(circle at 30% 30%,
-    rgba(50, 120, 230, 0.4),
-    rgba(40, 100, 210, 0.3),
-    transparent 70%
+  background: radial-gradient(circle at 30% 30%, 
+    rgba(80, 150, 255, 0.95),
+    rgba(60, 130, 235, 0.85),
+    rgba(40, 110, 215, 0.75),
+    transparent 60%
   );
-  box-shadow:
-    0 0 15px rgba(50, 120, 230, 0.25),
-    0 0 25px rgba(40, 100, 210, 0.15),
-    inset 0 0 8px rgba(120, 180, 240, 0.2);
+  box-shadow: 
+    0 0 30px rgba(80, 150, 255, 0.8),
+    0 0 60px rgba(60, 130, 235, 0.5),
+    0 0 100px rgba(40, 110, 215, 0.3),
+    inset 0 0 20px rgba(140, 200, 255, 0.6);
 }
 
 [data-theme="light"] .particle-gold {
-  background: radial-gradient(circle at 30% 30%,
-    rgba(220, 180, 60, 0.4),
-    rgba(200, 160, 50, 0.3),
-    transparent 70%
+  background: radial-gradient(circle at 30% 30%, 
+    rgba(255, 210, 90, 0.95),
+    rgba(235, 190, 70, 0.85),
+    rgba(215, 170, 50, 0.75),
+    transparent 60%
   );
-  box-shadow:
-    0 0 15px rgba(220, 180, 60, 0.25),
-    0 0 25px rgba(200, 160, 50, 0.15),
-    inset 0 0 8px rgba(240, 220, 140, 0.2);
+  box-shadow: 
+    0 0 30px rgba(255, 210, 90, 0.8),
+    0 0 60px rgba(235, 190, 70, 0.5),
+    0 0 100px rgba(215, 170, 50, 0.3),
+    inset 0 0 20px rgba(255, 240, 160, 0.6);
 }
 
-/* ===================== (MANTIDO) Logo e botões ===================== */
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.header-logo {
-  height: 36px;
-  width: auto;
-  object-fit: contain;
-  border-radius: 6px;
+/* Aumentar opacidade geral das partículas no tema claro (EXATAMENTE IGUAL AO CAD.HTML) */
+[data-theme="light"] .logo-particle {
+  opacity: 0.9 !important;
 }
 
 /* ===================== TOPBAR + SCROLL (VERSÃO CORRETA E ÚNICA) ===================== */
-/* ✅ Aqui é onde estava o conflito/duplicação antes.
-   ✅ Agora é UMA definição só (sem briga com outras regras).
-*/
-
-/* trava scroll do navegador */
+/* ✅ travando scroll do navegador */
 html, body {
   height: 100%;
   overflow: hidden;
 }
 
-/* topbar fixa e título REALMENTE centralizado */
+/* ✅ topbar fixa e título REALMENTE centralizado */
 .topbar {
   position: fixed;
   top: 0;
@@ -265,7 +334,7 @@ html, body {
   gap: 10px;
 }
 
-/* scroll manual abaixo da topbar */
+/* ✅ scroll manual abaixo da topbar */
 .app-scroll {
   position: fixed;
   top: var(--topbar-h);
@@ -302,6 +371,20 @@ html, body {
 
 .app-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #e6c15a, #b88900);
+}
+
+/* ===================== (MANTIDO) Logo e botões ===================== */
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.header-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 6px;
 }
 
 /* ===================== BOTÕES DO HEADER ===================== */
@@ -435,9 +518,17 @@ main#feed {
   transition: background .15s ease, transform .15s ease, opacity .15s ease;
 }
 
+[data-theme="light"] .side-link {
+  background: rgba(0,0,0,0.04);
+}
+
 .side-link:hover {
   background: rgba(255,255,255,0.08);
   transform: translateY(-1px);
+}
+
+[data-theme="light"] .side-link:hover {
+  background: rgba(0,0,0,0.08);
 }
 
 .side-link:disabled {
@@ -491,9 +582,17 @@ main#feed {
   transition: background .15s ease, transform .15s ease;
 }
 
+[data-theme="light"] .side-item {
+  background: rgba(0,0,0,0.04);
+}
+
 .side-item:hover {
   background: rgba(255,255,255,0.08);
   transform: translateY(-1px);
+}
+
+[data-theme="light"] .side-item:hover {
+  background: rgba(0,0,0,0.08);
 }
 
 .side-item-title {
@@ -528,7 +627,6 @@ main#feed {
   .layout { grid-template-columns: 1fr; }
   .sidebar-left { display: none; }
 }
-
 
 /* ===================== POST CARD ===================== */
 .post {
@@ -1191,7 +1289,7 @@ main#feed {
         rgba(0, 71, 171, 0.06) 0%,
         transparent 70%
       ),
-      linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+      var(--bg-primary);
   }
 
   /* ✅ no mobile, só reduz altura e paddings — NÃO muda a grid */
@@ -1298,14 +1396,12 @@ main#feed {
   .like-user-date { font-size: 10px; }
 }
 
-
 /* Highlight ao clicar em itens das sidebars */
 .pulse-highlight {
   outline: 2px solid rgba(216,177,74,0.55);
   box-shadow: 0 0 0 6px rgba(216,177,74,0.12);
   transition: box-shadow .2s ease, outline-color .2s ease;
 }
-
 
 /* ===================== VIEWS (Menu) ===================== */
 .main-content{
@@ -1407,4 +1503,27 @@ main#feed {
 }
 .view-item.unread{
   border-color: rgba(212,175,55,0.55);
+}
+
+/* ========== MOBILE: SEM SCROLL PERSONALIZADO ========== */
+@media (max-width: 900px) {
+  html, body {
+    overflow: auto; /* Scroll nativo do navegador */
+    height: auto;
+  }
+  
+  .app-scroll {
+    position: relative;
+    height: auto;
+    overflow: visible; /* Sem scroll personalizado */
+  }
+  
+  /* Esconder scrollbar personalizada no mobile */
+  .app-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .app-scroll {
+    scrollbar-width: none;
+  }
 }
