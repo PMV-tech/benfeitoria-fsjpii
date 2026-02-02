@@ -63,6 +63,24 @@ body {
   transition: background 0.3s ease;
 }
 
+/* Fundo gradiente para tema escuro */
+[data-theme="dark"] body {
+  background:
+    radial-gradient(ellipse at 20% 20%,
+      rgba(128, 0, 32, 0.35) 0%,
+      transparent 40%
+    ),
+    radial-gradient(ellipse at 80% 80%,
+      rgba(0, 71, 171, 0.35) 0%,
+      transparent 40%
+    ),
+    radial-gradient(ellipse at 50% 50%,
+      rgba(212, 175, 55, 0.25) 0%,
+      transparent 50%
+    ),
+    var(--bg-primary);
+  background-attachment: fixed;
+}
 /* REMOVER SCROLLBAR DE TODOS OS ELEMENTOS */
 ::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
@@ -904,4 +922,5 @@ body {
     margin-top: 20px;
   }
 }
+
 
