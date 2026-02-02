@@ -6,63 +6,73 @@
   <link rel="stylesheet" href="cad.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel ="icon" href = "logo_fsjpii.ico">
+  <link rel ="icon" href = "logo_fsjpii.ico">
 </head>
 <body>
+  <!-- CONTAINER COM SCROLL PERSONALIZADO (APENAS PC) -->
+  <div class="app-scroll">
+    <div class="content-wrapper">
+      <!-- BOTÃO DE TEMA FLUTUANTE -->
+      <button id="btnTheme" class="btn-theme-floating" type="button" aria-label="Alternar tema">
+        <i class="fas fa-sun"></i>
+      </button>
 
-  <!-- BOTÃO DE TEMA FLUTUANTE -->
-  <button id="btnTheme" class="btn-theme-floating" type="button" aria-label="Alternar tema">
-    <i class="fas fa-sun"></i>
-  </button>
+      <!-- FUNDO ANIMADO IGUAL AO FEED -->
+      <div id="logoBg"></div>
 
-  <!-- FUNDO ANIMADO IGUAL AO FEED -->
-  <div id="logoBg"></div>
+      <div class="login-container">
+        <div class="login-left">
+          <h1>Faça o seu Cadastro<span>.</span></h1>
+          
+          <!-- IMAGEM ABAIXO DO TÍTULO (VISÍVEL APENAS NO MOBILE) -->
+          <div class="logo-below-title">
+            <img src="fundo_fsjpii.png" alt="FSJPII" />
+            <p>Benfeitoria FSJPII</p>
+          </div>
 
-  <div class="login-container">
-    <div class="login-left">
-      <h1>Faça o seu Cadastro<span>.</span></h1>
-      
-    <div class="alert-warning" role="alert">
-      <strong>Aviso importante:</strong> use informações reais e respeitosas.  
-      Esta página é para uso sério e religioso. Nomes ofensivos, brincadeiras ou dados incorretos
-      <strong>não poderão ser alterados depois.</strong>
-    </div>
+          <div class="alert-warning" role="alert">
+            <strong>Aviso importante:</strong> use informações reais e respeitosas.  
+            Esta página é para uso sério e religioso. Nomes ofensivos, brincadeiras ou dados incorretos
+            <strong>não poderão ser alterados depois.</strong>
+          </div>
 
-      <div class="input-group">
-        <label>Email</label>
-        <input id="cadEmail" type="email" placeholder="Digite seu email" autocomplete="email" />
-      </div>
+          <div class="input-group">
+            <label>Email</label>
+            <input id="cadEmail" type="email" placeholder="Digite seu email" autocomplete="email" />
+          </div>
 
-      <div class="input-group">
-        <label>Senha</label>
-        <div class="password-wrapper">
-          <input id="cadPass" type="password" placeholder="Digite sua senha" autocomplete="new-password" />
-          <button type="button" class="toggle-password" id="togglePassword">
-            <i class="fas fa-eye-slash"></i>
+          <div class="input-group">
+            <label>Senha</label>
+            <div class="password-wrapper">
+              <input id="cadPass" type="password" placeholder="Digite sua senha" autocomplete="new-password" />
+              <button type="button" class="toggle-password" id="togglePassword">
+                <i class="fas fa-eye-slash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Nome do Usuário</label>
+            <input id="cadName" type="text" placeholder="Digite seu Nome" />
+          </div>
+
+          <button class="btn-cadastro" id="btnCadastrar">
+            <span class="btn-text">Cadastrar</span>
+            <div class="spinner"></div>
           </button>
+
+          <a href="index.html" class="link-login">Já tem conta? Fazer login</a>
+        </div>
+
+        <div class="login-right">
+          <img src="fundo_fsjpii.png" alt="FSJPII" />
+          <p>Benfeitoria FSJPII</p>
         </div>
       </div>
 
-      <div class="input-group">
-        <label>Nome do Usuário</label>
-        <input id="cadName" type="text" placeholder="Digite seu Nome" />
-      </div>
-
-      <button class="btn-cadastro" id="btnCadastrar">
-        <span class="btn-text">Cadastrar</span>
-        <div class="spinner"></div>
-      </button>
-
-      <a href="index.html" class="link-login">Já tem conta? Fazer login</a>
-    </div>
-
-    <div class="login-right">
-      <img src="fundo_fsjpii.png" alt="FSJPII" />
-      <p>Benfeitoria FSJPII</p>
+      <div class="PMV">© PMV Tech • Tecnologia e Inovação</div>
     </div>
   </div>
-
-  <div class="PMV">© PMV Tech • Tecnologia e Inovação</div>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -238,8 +248,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
