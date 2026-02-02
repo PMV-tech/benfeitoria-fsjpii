@@ -170,106 +170,101 @@ function setMiniProfileUI() {
 let editProfileModalEl = null;
 let viewProfileModalEl = null;
 
+// Estilos mínimos (inline via <style>) para o modal de perfil.
+// Isso evita depender de classes que podem não existir no feed.css atual.
+function ensureProfileModalStyles() {
+  if (document.getElementById("profile-modal-styles")) return;
+  const st = document.createElement("style");
+  st.id = "profile-modal-styles";
+  st.textContent = `
+    .profile-modal .modal-card{max-width:560px;width:92vw;}
+    .profile-modal .pm-header{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+    .profile-modal .pm-title{font-size:18px;font-weight:900;color:var(--text-primary);}
+    .profile-modal .pm-close{width:38px;height:38px;border-radius:12px;border:1px solid var(--border-color);background:rgba(255,255,255,0.06);color:var(--text-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;line-height:1;}
+    .profile-modal .pm-form{margin-top:12px;display:flex;flex-direction:column;gap:10px;}
+    .profile-modal .pm-label{font-weight:800;color:var(--text-primary);font-size:13px;}
+    .profile-modal .pm-input,.profile-modal .pm-textarea{padding:10px 12px;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);outline:none;}
+    .profile-modal .pm-textarea{resize:vertical;min-height:84px;}
+    .profile-modal .pm-row{display:flex;gap:10px;align-items:center;}
+    .profile-modal .pm-preview{width:56px;height:56px;border-radius:16px;border:1px solid var(--border-color);background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--text-primary);overflow:hidden;}
+    .profile-modal .pm-file{color:var(--text-primary);}
+    .profile-modal .pm-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;}
+    .profile-modal .pm-btn{padding:10px 14px;border-radius:14px;font-weight:900;cursor:pointer;border:1px solid var(--border-color);}
+    .profile-modal .pm-btn.secondary{background:rgba(255,255,255,0.06);color:var(--text-primary);}
+    .profile-modal .pm-btn.primary{background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;border:none;}
+  `;
+  document.head.appendChild(st);
+}
+
 function ensureEditProfileModal() {
   if (editProfileModalEl) return editProfileModalEl;
 
+  ensureProfileModalStyles();
+
   editProfileModalEl = document.createElement("div");
-  editProfileModalEl.className = "modal";
+  editProfileModalEl.className = "modal profile-modal";
   editProfileModalEl.style.display = "none";
 
   const card = document.createElement("div");
   card.className = "modal-card";
-  card.style.maxWidth = "520px";
 
   const header = document.createElement("div");
-  header.style.display = "flex";
-  header.style.alignItems = "center";
-  header.style.justifyContent = "space-between";
-  header.style.gap = "10px";
+  header.className = "pm-header";
 
   const title = document.createElement("div");
   title.textContent = "Editar perfil";
-  title.style.fontSize = "18px";
-  title.style.fontWeight = "900";
-  title.style.color = "var(--text-primary)";
+  title.className = "pm-title";
 
-  const close = makeIconButton({ title: "Fechar", icon: "x" });
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "pm-close";
+  close.title = "Fechar";
+  close.textContent = "×";
   close.addEventListener("click", () => closeEditProfileModal());
 
   header.appendChild(title);
   header.appendChild(close);
 
   const form = document.createElement("div");
-  form.style.marginTop = "12px";
-  form.style.display = "flex";
-  form.style.flexDirection = "column";
-  form.style.gap = "10px";
+  form.className = "pm-form";
 
   const nameLabel = document.createElement("div");
   nameLabel.textContent = "Nome";
-  nameLabel.style.fontWeight = "800";
-  nameLabel.style.color = "var(--text-primary)";
-  nameLabel.style.fontSize = "13px";
+  nameLabel.className = "pm-label";
 
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.id = "editProfileName";
   nameInput.placeholder = "Seu nome";
-  nameInput.style.padding = "10px 12px";
-  nameInput.style.borderRadius = "12px";
-  nameInput.style.border = "1px solid var(--border-color)";
-  nameInput.style.background = "var(--bg-secondary)";
-  nameInput.style.color = "var(--text-primary)";
+  nameInput.className = "pm-input";
 
   const bioLabel = document.createElement("div");
   bioLabel.textContent = "Bio";
-  bioLabel.style.fontWeight = "800";
-  bioLabel.style.color = "var(--text-primary)";
-  bioLabel.style.fontSize = "13px";
-  bioLabel.style.marginTop = "6px";
+  bioLabel.className = "pm-label";
 
   const bioInput = document.createElement("textarea");
   bioInput.id = "editProfileBio";
   bioInput.placeholder = "Uma frase sobre você…";
   bioInput.rows = 3;
-  bioInput.style.padding = "10px 12px";
-  bioInput.style.borderRadius = "12px";
-  bioInput.style.border = "1px solid var(--border-color)";
-  bioInput.style.background = "var(--bg-secondary)";
-  bioInput.style.color = "var(--text-primary)";
-  bioInput.style.resize = "vertical";
+  bioInput.className = "pm-textarea";
 
   const photoLabel = document.createElement("div");
   photoLabel.textContent = "Foto";
-  photoLabel.style.fontWeight = "800";
-  photoLabel.style.color = "var(--text-primary)";
-  photoLabel.style.fontSize = "13px";
-  photoLabel.style.marginTop = "6px";
+  photoLabel.className = "pm-label";
 
   const row = document.createElement("div");
-  row.style.display = "flex";
-  row.style.gap = "10px";
-  row.style.alignItems = "center";
+  row.className = "pm-row";
 
   const photoPreview = document.createElement("div");
-  photoPreview.style.width = "56px";
-  photoPreview.style.height = "56px";
-  photoPreview.style.borderRadius = "16px";
-  photoPreview.style.border = "1px solid var(--border-color)";
-  photoPreview.style.background = "rgba(255,255,255,0.06)";
-  photoPreview.style.display = "flex";
-  photoPreview.style.alignItems = "center";
-  photoPreview.style.justifyContent = "center";
-  photoPreview.style.fontWeight = "900";
-  photoPreview.style.color = "var(--text-primary)";
-  photoPreview.textContent = "🙂";
+  photoPreview.className = "pm-preview";
+  photoPreview.textContent = mkAvatarInitials(currentProfile?.full_name || "Usuário");
 
   const file = document.createElement("input");
   file.type = "file";
   file.accept = "image/*";
   file.id = "editProfileAvatar";
+  file.className = "pm-file";
   file.style.flex = "1";
-  file.style.color = "var(--text-primary)";
 
   let pendingAvatarFile = null;
 
@@ -291,21 +286,18 @@ function ensureEditProfileModal() {
   row.appendChild(file);
 
   const actions = document.createElement("div");
-  actions.style.display = "flex";
-  actions.style.gap = "10px";
-  actions.style.justifyContent = "flex-end";
-  actions.style.marginTop = "10px";
+  actions.className = "pm-actions";
 
   const cancel = document.createElement("button");
   cancel.type = "button";
   cancel.textContent = "Cancelar";
-  cancel.className = "btn-secondary";
+  cancel.className = "pm-btn secondary";
   cancel.addEventListener("click", () => closeEditProfileModal());
 
   const save = document.createElement("button");
   save.type = "button";
   save.textContent = "Salvar";
-  save.className = "btn-primary";
+  save.className = "pm-btn primary";
 
   save.addEventListener("click", async () => {
     if (!currentUser) return;
@@ -316,13 +308,23 @@ function ensureEditProfileModal() {
       const bio = bioInput.value.trim();
 
       let avatar_url = currentProfile?.avatar_url || null;
+      let avatarUploadWarn = "";
 
       if (pendingAvatarFile) {
         const ext = (pendingAvatarFile.name.split(".").pop() || "jpg").toLowerCase();
         const path = `${currentUser.id}/avatar.${ext}`;
         const up = await supa.storage.from(AVATAR_BUCKET).upload(path, pendingAvatarFile, { upsert: true });
-        if (up.error) throw up.error;
-        avatar_url = path;
+        if (up.error) {
+          const msg = String(up.error.message || up.error);
+          // Se o bucket não existir, não travar a edição de nome/bio.
+          if (msg.toLowerCase().includes("bucket") && msg.toLowerCase().includes("not") && msg.toLowerCase().includes("found")) {
+            avatarUploadWarn = "Não consegui enviar a foto porque o bucket 'avatars' não existe. Crie um bucket chamado avatars no Storage e tente de novo.";
+          } else {
+            avatarUploadWarn = "Não consegui enviar a foto agora. Você ainda pode salvar nome/bio e tentar a foto depois.";
+          }
+        } else {
+          avatar_url = path;
+        }
       }
 
       const { error } = await supa
@@ -348,6 +350,10 @@ function ensureEditProfileModal() {
       await loadNoticesView();
       await loadNotificationsView();
       await loadNotificationsBadge();
+
+      if (avatarUploadWarn) {
+        alert(avatarUploadWarn);
+      }
     } catch (e) {
       console.error(e);
       alert(e?.message || "Erro ao salvar perfil. Confirme se existe o bucket 'avatars' e as colunas avatar_url/bio em profiles.");
@@ -414,8 +420,10 @@ function closeEditProfileModal() {
 function ensureViewProfileModal() {
   if (viewProfileModalEl) return viewProfileModalEl;
 
+  ensureProfileModalStyles();
+
   viewProfileModalEl = document.createElement("div");
-  viewProfileModalEl.className = "modal";
+  viewProfileModalEl.className = "modal profile-modal";
   viewProfileModalEl.style.display = "none";
 
   const card = document.createElement("div");
