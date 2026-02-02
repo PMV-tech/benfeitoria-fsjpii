@@ -8,10 +8,49 @@ if (!supa) {
 }
 
 const fileInput = document.getElementById("fileInput");
+if (fileInput) fileInput.accept = "image/*,video/*";
 const feed = document.getElementById("feed");
 
 // Topbar
 const topbarTitle = document.querySelector(".topbar h2");
+
+
+// ===== WhatsApp (atalho fixo) =====
+// Troque o número abaixo (somente dígitos, com DDI). Ex: 5511999999999
+const WHATS_NUMBER = "5511944809104";
+const WHATS_TEXT = "Olá! Vim pelo app FSJPII.";
+
+function ensureWhatsFab() {
+  if (document.getElementById("whatsFab")) return;
+
+  const a = document.createElement("a");
+  a.id = "whatsFab";
+  a.href = `https://wa.me/${WHATS_NUMBER}?text=${encodeURIComponent(WHATS_TEXT)}`;
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.title = "Falar no WhatsApp";
+
+  a.style.position = "fixed";
+  a.style.right = "22px";
+  a.style.bottom = "110px"; // acima do botão "+"
+  a.style.width = "54px";
+  a.style.height = "54px";
+  a.style.borderRadius = "50%";
+  a.style.display = "flex";
+  a.style.alignItems = "center";
+  a.style.justifyContent = "center";
+  a.style.background = "#25D366";
+  a.style.boxShadow = "0 12px 32px rgba(0,0,0,.35)";
+  a.style.zIndex = "9999";
+
+  a.innerHTML = `
+    <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path fill="#fff" d="M19.11 17.42c-.26-.13-1.54-.76-1.78-.85-.24-.09-.42-.13-.6.13-.17.26-.69.85-.85 1.02-.16.17-.31.2-.57.07-.26-.13-1.1-.4-2.1-1.28-.78-.69-1.3-1.54-1.45-1.8-.15-.26-.02-.4.11-.53.12-.12.26-.31.39-.47.13-.16.17-.26.26-.44.09-.17.04-.33-.02-.46-.07-.13-.6-1.44-.82-1.97-.22-.53-.44-.46-.6-.47h-.51c-.17 0-.44.07-.67.33-.22.26-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.79.6.26 1.07.42 1.44.54.6.19 1.15.16 1.58.1.48-.07 1.54-.63 1.76-1.24.22-.61.22-1.13.15-1.24-.07-.11-.24-.17-.5-.3z"/>
+      <path fill="#fff" d="M16 3C9.37 3 4 8.22 4 14.67c0 2.56.86 4.92 2.32 6.83L5 29l7.72-1.95c1.04.28 2.14.43 3.28.43 6.63 0 12-5.22 12-11.67S22.63 3 16 3zm0 21.02c-1.04 0-2.06-.18-3.01-.52l-.54-.19-4.58 1.16 1.23-4.32-.35-.56c-1.2-1.91-1.84-4.11-1.84-6.25C6.91 8.82 11 4.88 16 4.88s9.09 3.94 9.09 8.79S21 24.02 16 24.02z"/>
+    </svg>
+  `;
+  document.body.appendChild(a);
+}
 
 // Botões
 const btnLogout = document.getElementById("btnLogout");
@@ -21,6 +60,52 @@ const btnTheme = document.getElementById("btnTheme");
 const postModal = document.getElementById("postModal");
 const previewImg = document.getElementById("previewImg");
 const previewWrap = document.querySelector("#postModal .modal-preview");
+
+let previewVideo = null;
+
+function ensurePreviewVideo() {
+  if (previewVideo) return previewVideo;
+  if (!previewWrap) return null;
+  const v = document.createElement("video");
+  v.id = "previewVideo";
+  v.muted = true;
+  v.playsInline = true;
+  v.loop = true;
+  v.controls = true;
+  v.style.width = "100%";
+  v.style.display = "none";
+  v.style.borderRadius = "16px";
+  v.style.maxHeight = "260px";
+  v.style.objectFit = "cover";
+  // coloca o vídeo junto da imagem (mesma área de prévia)
+  previewWrap.appendChild(v);
+  previewVideo = v;
+  return v;
+}
+
+function setPreviewMode(mode, dataUrl = "") {
+  // mode: "none" | "image" | "video"
+  const v = ensurePreviewVideo();
+  if (previewImg) {
+    previewImg.style.display = mode === "image" ? "block" : "none";
+    if (mode === "image") previewImg.src = dataUrl;
+    if (mode !== "image") previewImg.removeAttribute("src");
+  }
+  if (v) {
+    v.style.display = mode === "video" ? "block" : "none";
+    if (mode === "video") {
+      v.src = dataUrl;
+      // tenta começar em silêncio
+      v.currentTime = 0;
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+    }
+  }
+}
 
 function setPreviewVisible(visible) {
   if (previewWrap) previewWrap.style.display = visible ? "" : "none";
@@ -136,7 +221,7 @@ async function hydrateProfiles(userIds) {
 }
 
 // ----------------- Perfis (avatar/bio + modais) -----------------
-const AVATAR_BUCKET = "avatars"; // crie um bucket público 'avatars' no Supabase Storage
+const AVATAR_BUCKET = "posts"; // usa o bucket existente "posts"; vamos salvar avatar em posts/avatars/<user_id>/
 
 function getAvatarPublicUrl(path) {
   if (!path) return "";
@@ -312,13 +397,13 @@ function ensureEditProfileModal() {
 
       if (pendingAvatarFile) {
         const ext = (pendingAvatarFile.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${currentUser.id}/avatar.${ext}`;
+        const path = `avatars/${currentUser.id}/avatar.${ext}`;
         const up = await supa.storage.from(AVATAR_BUCKET).upload(path, pendingAvatarFile, { upsert: true });
         if (up.error) {
           const msg = String(up.error.message || up.error);
           // Se o bucket não existir, não travar a edição de nome/bio.
           if (msg.toLowerCase().includes("bucket") && msg.toLowerCase().includes("not") && msg.toLowerCase().includes("found")) {
-            avatarUploadWarn = "Não consegui enviar a foto porque o bucket 'avatars' não existe. Crie um bucket chamado avatars no Storage e tente de novo.";
+            avatarUploadWarn = "Não consegui enviar a foto porque o o bucket 'posts' (pasta avatars/) não está acessível. Verifique o Storage/policies e tente de novo.";
           } else {
             avatarUploadWarn = "Não consegui enviar a foto agora. Você ainda pode salvar nome/bio e tentar a foto depois.";
           }
@@ -355,7 +440,8 @@ function ensureEditProfileModal() {
       profilesMap[currentUser.id] = currentProfile.full_name || "Usuário";
 
       closeEditProfileModal();
-      await carregarFeed();
+      ensureWhatsFab();
+  await carregarFeed();
       await loadPinnedSidebar();
       await loadNoticesView();
       await loadNotificationsView();
@@ -366,7 +452,7 @@ function ensureEditProfileModal() {
       }
     } catch (e) {
       console.error(e);
-      alert(e?.message || "Erro ao salvar perfil. Confirme se existe o bucket 'avatars' e as colunas avatar_url/bio em profiles.");
+      alert(e?.message || "Erro ao salvar perfil. Confirme se existe o bucket 'posts' (pasta avatars/) e as colunas avatar_url/bio em profiles.");
     } finally {
       save.disabled = false;
       save.style.opacity = "1";
@@ -725,6 +811,12 @@ function getPublicImageUrl(path) {
   const { data } = supa.storage.from("posts").getPublicUrl(path);
   return data?.publicUrl || "";
 }
+
+
+function isVideoPath(path = "") {
+  return /\.(mp4|webm|mov|m4v|ogg)$/i.test(path);
+}
+
 
 // ----------------- Modal: escolher post com/sem imagem -----------------
 let choiceModal = null;
@@ -2642,17 +2734,37 @@ async function renderPost(post) {
     imgContainer.style.height = "auto";
     imgContainer.style.userSelect = "none";
 
-    const img = document.createElement("img");
-    img.src = imgUrl;
-    img.alt = "Post";
-    img.style.width = "100%";
-    img.style.display = "block";
-    img.style.maxHeight = "520px";
-    img.style.objectFit = "cover";
-    img.style.background = "var(--bg-secondary)";
-    img.style.transition = "transform 0.3s ease";
-    img.style.userSelect = "none";
-    img.style.pointerEvents = "none";
+    const isVideo = isVideoPath(post.image_url);
+
+    let mediaEl;
+    if (isVideo) {
+      const v = document.createElement("video");
+      v.src = imgUrl;
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = "metadata";
+      v.style.width = "100%";
+      v.style.display = "block";
+      v.style.maxHeight = "520px";
+      v.style.objectFit = "cover";
+      v.style.background = "black";
+      v.style.userSelect = "none";
+      v.style.pointerEvents = "none";
+      mediaEl = v;
+    } else {
+      const img = document.createElement("img");
+      img.src = imgUrl;
+      img.alt = "Post";
+      img.style.width = "100%";
+      img.style.display = "block";
+      img.style.maxHeight = "520px";
+      img.style.objectFit = "cover";
+      img.style.background = "var(--bg-secondary)";
+      img.style.transition = "transform 0.3s ease";
+      img.style.userSelect = "none";
+      img.style.pointerEvents = "none";
+      mediaEl = img;
+    }
 
     const overlay = document.createElement("div");
     overlay.style.position = "absolute";
@@ -2674,12 +2786,12 @@ async function renderPost(post) {
     overlay.style.zIndex = "1";
 
     const expandIcon = document.createElement("div");
-    expandIcon.innerHTML = "🔍 Clique para expandir";
+    expandIcon.innerHTML = isVideoPath(post.image_url) ? "▶ Clique para assistir" : "🔍 Clique para expandir";
     expandIcon.style.opacity = "0.7";
     expandIcon.style.pointerEvents = "none";
     overlay.appendChild(expandIcon);
 
-    imgContainer.appendChild(img);
+    imgContainer.appendChild(mediaEl);
     imgContainer.appendChild(overlay);
 
     // click/dblclick
@@ -2694,7 +2806,8 @@ async function renderPost(post) {
 
       if (clickTimer === null) {
         clickTimer = setTimeout(() => {
-          abrirImagemTelaCheia(imgUrl, imgContainer);
+          if (isVideoPath(post.image_url)) abrirVideoTelaCheia(imgUrl);
+          else abrirImagemTelaCheia(imgUrl, imgContainer);
           clickTimer = null;
         }, 300);
       }
@@ -3056,6 +3169,58 @@ async function renderPost(post) {
 
   return postEl;
 }
+
+
+function abrirVideoTelaCheia(url) {
+    const modal = document.createElement("div");
+    modal.className = "fullscreen-modal";
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100vw";
+    modal.style.height = "100vh";
+    modal.style.backgroundColor = "rgba(0,0,0,0.95)";
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
+    modal.style.zIndex = "9999";
+    modal.style.cursor = "pointer";
+    modal.style.backdropFilter = "blur(10px)";
+
+    const video = document.createElement("video");
+    video.src = url;
+    video.controls = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.style.maxWidth = "90vw";
+    video.style.maxHeight = "90vh";
+    video.style.borderRadius = "10px";
+    video.style.cursor = "default";
+    video.style.background = "black";
+
+    modal.appendChild(video);
+
+    // fecha ao clicar fora
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.remove();
+    });
+
+    // ESC
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        modal.remove();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    modal.addEventListener("remove", () => document.removeEventListener("keydown", onKey));
+
+    document.body.appendChild(modal);
+
+    // tenta tocar
+    const p = video.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+}
+
 
 // Função para carregar apenas comentários MAIS RECENTES (preview no feed)
 async function carregarComentariosRecentes(postId, ul, seeMoreContainer, post, controls = {}) {
@@ -3871,9 +4036,13 @@ fileInput?.addEventListener("change", () => {
 
   const reader = new FileReader();
   reader.onload = () => {
-    // Com imagem: mostra a área de prévia
     setPreviewVisible(true);
-    if (previewImg) previewImg.src = reader.result;
+    const dataUrl = reader.result;
+    if (pendingFile?.type?.startsWith("video/")) {
+      setPreviewMode("video", dataUrl);
+    } else {
+      setPreviewMode("image", dataUrl);
+    }
     if (captionInput) captionInput.value = "";
     setModalOpen(true);
     setTimeout(() => captionInput?.focus(), 50);
@@ -3890,6 +4059,7 @@ function fecharModal() {
 
   // Fecha sempre limpando e escondendo a prévia
   setPreviewVisible(false);
+  setPreviewMode("none");
 
   if (captionInput) captionInput.value = "";
 }
@@ -4051,3 +4221,4 @@ function initRealtime() {
     console.warn("Realtime não disponível:", e?.message || e);
   }
 }
+
