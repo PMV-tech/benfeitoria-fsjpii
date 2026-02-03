@@ -214,7 +214,7 @@ body {
 }
 
 .header-logo {
-  height: 36px;
+  height: 40px;
   width: auto;
   object-fit: contain;
   border-radius: 6px;
@@ -1211,7 +1211,7 @@ main#feed {
     padding: 0 12px;
   }
 
-  .header-logo { height: 32px; }
+  .header-logo { height: 50px; }
 
   .topbar h2 { font-size: 16px; }
 
@@ -1289,7 +1289,7 @@ main#feed {
 
   .logo-container { gap: 6px; }
 
-  .header-logo { height: 28px; }
+  .header-logo { height: 40px; }
 
   .comment-action-btn {
     width: 26px;
@@ -1417,4 +1417,288 @@ main#feed {
 }
 .view-item.unread{
   border-color: rgba(212,175,55,0.55);
+}
+
+/* ===================== MENU HAMBÚRGUER MOBILE ===================== */
+
+/* Botão hambúrguer no header */
+.mobile-menu-toggle {
+  display: none;
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--button-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  z-index: 1001;
+  font-size: 20px;
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--button-hover);
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* Overlay do menu */
+.mobile-menu-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+/* Menu mobile */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: -280px;
+  width: 280px;
+  height: 100%;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
+  z-index: 9999;
+  overflow-y: auto;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-menu.active {
+  left: 0;
+}
+
+.mobile-menu-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-header h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.mobile-menu-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--button-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-close:hover {
+  background: var(--button-hover);
+  transform: rotate(90deg);
+}
+
+.mobile-menu-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.mobile-menu-section {
+  margin-bottom: 24px;
+}
+
+.mobile-menu-title {
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  letter-spacing: 0.2px;
+}
+
+.mobile-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-light);
+}
+
+.mobile-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--accent-gradient);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  flex-shrink: 0;
+}
+
+.mobile-profile-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-profile-name {
+  font-weight: 900;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-profile-role {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.mobile-menu-link {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  padding: 14px 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(2px);
+}
+
+.mobile-menu-link.active {
+  border-color: rgba(199, 125, 255, 0.35);
+  background: rgba(199, 125, 255, 0.08);
+}
+
+.mobile-badge {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  margin-left: auto;
+  background: rgba(212, 175, 55, 0.95);
+  color: #111;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* ===================== RESPONSIVIDADE ===================== */
+
+/* Ajusta o grid para mobile */
+@media (max-width: 820px) {
+  /* Mostra botão hambúrguer e ajusta header */
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Ajusta posição do logo e título para dar espaço ao hambúrguer */
+  .logo-container {
+    margin-left: 10px;
+  }
+  
+  .topbar h2 {
+    margin-left: 0;
+  }
+  
+  /* Esconde sidebar esquerda no mobile */
+  .sidebar-left {
+    display: none !important;
+  }
+  
+  /* Ajusta layout para uma coluna */
+  .layout {
+    grid-template-columns: 1fr !important;
+    padding: 0 12px;
+  }
+  
+  .main-content {
+    padding: 18px 0 120px !important;
+  }
+  
+  /* Ajusta visualização de posts */
+  .post {
+    margin-bottom: 16px;
+  }
+  
+  /* WhatsApp e botão + */
+  #whatsFab {
+    bottom: 10px !important;
+    z-index: 9997;
+  }
+  
+  .add-post {
+  position: fixed;
+  bottom: 70px; 
+  right: 22px;
+  z-index: 9999;
+  }
+}
+
+/* Para telas médias (tablets) */
+@media (min-width: 821px) and (max-width: 1100px) {
+  .mobile-menu-toggle {
+    display: none;
+  }
+  
+  .sidebar-left {
+    display: block !important;
+  }
+}
+
+/* Para desktop grande */
+@media (min-width: 1101px) {
+  .mobile-menu-toggle {
+    display: none;
+  }
+  
+  .sidebar-left {
+    display: block !important;
+  }
+}
+
+/* Ajuste da topbar para mobile */
+@media (max-width: 768px) {
+  .topbar {
+    padding-left: 60px;
+  }
 }
