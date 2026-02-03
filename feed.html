@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="feed.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel ="icon" href = "logo_fsjpii.ico">
+  <link rel ="icon" href = "logo_fsjpii.ico">
 </head>
 
 <body>
@@ -20,6 +20,11 @@
     <!-- Título centralizado -->
     <h2>FSJPII • Admin</h2>
 
+    <!-- Botão hambúrguer para mobile -->
+    <button id="mobileMenuToggle" class="mobile-menu-toggle" aria-label="Abrir menu">
+      <i class="fas fa-bars"></i>
+    </button>
+
     <!-- Botões à direita -->
     <div class="header-actions">
       <!-- Botão Tema -->
@@ -31,92 +36,142 @@
       <button id="btnLogout" class="btn-logout" type="button">Sair</button>
     </div>
   </header>
-<div class="app-scroll">
-  <div class="layout">
-    <!-- Sidebar esquerda -->
-    <aside class="sidebar sidebar-left" id="leftSidebar">
-      <div class="side-card">
-        <div class="side-title">Minha conta</div>
-        <div class="profile-mini">
-          <div class="avatar-mini" aria-hidden="true"></div>
-          <div class="profile-mini-text">
-            <div id="miniProfileName" class="profile-name">Usuário</div>
-            <div id="miniProfileRole" class="profile-role">carregando…</div>
+
+  <!-- Menu Mobile -->
+  <div id="mobileMenu" class="mobile-menu">
+    <div class="mobile-menu-header">
+      <button id="mobileMenuClose" class="mobile-menu-close" aria-label="Fechar menu">
+        <i class="fas fa-times"></i>
+      </button>
+      <h3>Menu</h3>
+    </div>
+    
+    <div class="mobile-menu-content">
+      <!-- Minha Conta -->
+      <div class="mobile-menu-section">
+        <div class="mobile-menu-title">Minha conta</div>
+        <div class="mobile-profile">
+          <div class="mobile-avatar"></div>
+          <div class="mobile-profile-text">
+            <div id="mobileProfileName" class="mobile-profile-name">Usuário</div>
+            <div id="mobileProfileRole" class="mobile-profile-role">carregando…</div>
           </div>
         </div>
       </div>
 
-      <div class="side-card">
-        <div class="side-title">Menu</div>
-        <button class="side-link active" type="button" id="navFeed" data-view="feed">Feed</button>
-        <button class="side-link" type="button" id="navNotifications" data-view="notifications">
-          Notificações <span id="notifBadge" class="side-badge" style="display:none;">0</span>
+      <!-- Menu Principal -->
+      <div class="mobile-menu-section">
+        <div class="mobile-menu-title">Menu</div>
+        <button class="mobile-menu-link active" type="button" data-view="feed">
+          <i class="fas fa-home"></i> Feed
         </button>
-        <button class="side-link" type="button" id="navNotices" data-view="notices">Avisos</button>
-        <button class="side-link" type="button" id="navEvents" data-view="events">Eventos</button>
+        <button class="mobile-menu-link" type="button" data-view="notifications">
+          <i class="fas fa-bell"></i> Notificações 
+          <span id="mobileNotifBadge" class="mobile-badge" style="display:none;">0</span>
+        </button>
+        <button class="mobile-menu-link" type="button" data-view="notices">
+          <i class="fas fa-exclamation-circle"></i> Avisos
+        </button>
+        <button class="mobile-menu-link" type="button" data-view="events">
+          <i class="fas fa-calendar"></i> Eventos
+        </button>
       </div>
 
-      <div class="side-card admin-only<div class="side-card admin-only" id="adminShortcuts" style="display:none;">
-        <div class="side-title">Atalhos do admin</div>
-        <button class="side-link" type="button" id="btnNewPinned">📌 Novo aviso fixado</button>
-        <div class="side-hint">Dica: você também pode fixar qualquer post pelo ícone 📌 no card.</div>
+      <!-- Atalhos Admin (somente para admin) -->
+      <div class="mobile-menu-section admin-only" id="mobileAdminShortcuts" style="display:none;">
+        <div class="mobile-menu-title">Atalhos do admin</div>
+        <button class="mobile-menu-link" type="button" id="mobileBtnNewPinned">
+          <i class="fas fa-thumbtack"></i> Novo aviso fixado
+        </button>
       </div>
-    </aside>
+    </div>
+  </div>
+  <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
 
-    <!-- Feed central -->
-    <!-- Conteúdo central (views) -->
-    <main id="mainContent" class="main-content">
-      <section class="view view-active" id="view-feed" data-view="feed">
-        <div id="feed"></div>
-      </section>
-
-      <section class="view" id="view-notifications" data-view="notifications">
-        <div class="view-header">
-          <h3>Notificações</h3>
-          <button id="btnMarkRead" type="button" class="view-action">Marcar como lidas</button>
+  <div class="app-scroll">
+    <div class="layout">
+      <!-- Sidebar esquerda (Desktop) -->
+      <aside class="sidebar sidebar-left" id="leftSidebar">
+        <div class="side-card">
+          <div class="side-title">Minha conta</div>
+          <div class="profile-mini">
+            <div class="avatar-mini" aria-hidden="true"></div>
+            <div class="profile-mini-text">
+              <div id="miniProfileName" class="profile-name">Usuário</div>
+              <div id="miniProfileRole" class="profile-role">carregando…</div>
+            </div>
+          </div>
         </div>
-        <div id="notifList" class="view-list"></div>
-        <div id="notifEmpty" class="side-empty" style="display:none;">Sem notificações.</div>
-      </section>
 
-      <section class="view" id="view-notices" data-view="notices">
-        <div class="view-header">
-          <h3>Avisos</h3>
-          <button id="btnNewPinnedCenter" type="button" class="view-action">📌 Novo aviso fixado</button>
+        <div class="side-card">
+          <div class="side-title">Menu</div>
+          <button class="side-link active" type="button" id="navFeed" data-view="feed">Feed</button>
+          <button class="side-link" type="button" id="navNotifications" data-view="notifications">
+            Notificações <span id="notifBadge" class="side-badge" style="display:none;">0</span>
+          </button>
+          <button class="side-link" type="button" id="navNotices" data-view="notices">Avisos</button>
+          <button class="side-link" type="button" id="navEvents" data-view="events">Eventos</button>
         </div>
-        <div id="noticesList" class="view-list"></div>
-        <div id="noticesEmpty" class="side-empty" style="display:none;">Nenhum aviso fixado ainda.</div>
-      </section>
 
-      <section class="view" id="view-events" data-view="events">
-        <div class="view-header">
-          <h3>Eventos</h3>
-          <button id="btnNewEvent" type="button" class="view-action">＋ Novo evento</button>
+        <div class="side-card admin-only" id="adminShortcuts" style="display:none;">
+          <div class="side-title">Atalhos do admin</div>
+          <button class="side-link" type="button" id="btnNewPinned">📌 Novo aviso fixado</button>
+          <div class="side-hint">Dica: você também pode fixar qualquer post pelo ícone 📌 no card.</div>
         </div>
-        <div id="eventsList" class="view-list"></div>
-        <div id="eventsEmpty" class="side-empty">Em breve: calendário de eventos.</div>
-      </section>
-    </main>
+      </aside>
 
-    <!-- Sidebar direita -->
-    <aside class="sidebar sidebar-right" id="rightSidebar">
-      <div class="side-card">
-        <div class="side-title">Avisos fixados</div>
-        <div id="pinnedList" class="side-list"></div>
-        <div id="pinnedEmpty" class="side-empty" style="display:none;">Nenhum aviso fixado ainda.</div>
-      </div>
+      <!-- Feed central -->
+      <main id="mainContent" class="main-content">
+        <section class="view view-active" id="view-feed" data-view="feed">
+          <div id="feed"></div>
+        </section>
 
-      <div class="side-card">
-        <div class="side-title">Atividade recente</div>
-        <div id="activityList" class="side-list"></div>
-        <div id="activityEmpty" class="side-empty" style="display:none;">Sem atividade recente.</div>
-      </div>
-    </aside>
-  </div></div>
-  
+        <section class="view" id="view-notifications" data-view="notifications">
+          <div class="view-header">
+            <h3>Notificações</h3>
+            <button id="btnMarkRead" type="button" class="view-action">Marcar como lidas</button>
+          </div>
+          <div id="notifList" class="view-list"></div>
+          <div id="notifEmpty" class="side-empty" style="display:none;">Sem notificações.</div>
+        </section>
 
+        <section class="view" id="view-notices" data-view="notices">
+          <div class="view-header">
+            <h3>Avisos</h3>
+            <button id="btnNewPinnedCenter" type="button" class="view-action">📌 Novo aviso fixado</button>
+          </div>
+          <div id="noticesList" class="view-list"></div>
+          <div id="noticesEmpty" class="side-empty" style="display:none;">Nenhum aviso fixado ainda.</div>
+        </section>
+
+        <section class="view" id="view-events" data-view="events">
+          <div class="view-header">
+            <h3>Eventos</h3>
+            <button id="btnNewEvent" type="button" class="view-action">＋ Novo evento</button>
+          </div>
+          <div id="eventsList" class="view-list"></div>
+          <div id="eventsEmpty" class="side-empty">Em breve: calendário de eventos.</div>
+        </section>
+      </main>
+
+      <!-- Sidebar direita -->
+      <aside class="sidebar sidebar-right" id="rightSidebar">
+        <div class="side-card">
+          <div class="side-title">Avisos fixados</div>
+          <div id="pinnedList" class="side-list"></div>
+          <div id="pinnedEmpty" class="side-empty" style="display:none;">Nenhum aviso fixado ainda.</div>
+        </div>
+
+        <div class="side-card">
+          <div class="side-title">Atividade recente</div>
+          <div id="activityList" class="side-list"></div>
+          <div id="activityEmpty" class="side-empty" style="display:none;">Sem atividade recente.</div>
+        </div>
+      </aside>
+    </div>
+  </div>
     
-    <!-- BOTÃO + -->
+  <!-- BOTÃO + -->
   <button class="add-post" onclick="abrirGaleria()" aria-label="Novo post">+</button>
 
   <!-- INPUT INVISÍVEL -->
