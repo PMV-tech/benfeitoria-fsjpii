@@ -42,7 +42,7 @@ function ensureWhatsFab() {
   a.style.justifyContent = "center";
   a.style.background = "#25D366";
   a.style.boxShadow = "0 12px 32px rgba(0,0,0,.35)";
-  a.style.zIndex = "9998"; // ALTERADO: z-index menor que o botão "+"
+  a.style.zIndex = "9999"; // ALTERADO: z-index menor que o botão "+"
 
   a.innerHTML = `
     <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -4251,3 +4251,223 @@ function initRealtime() {
     console.warn("Realtime não disponível:", e?.message || e);
   }
 }
+
+// ===================== MENU MOBILE =====================
+document.addEventListener('DOMContentLoaded', function() {
+  const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+  const mobileMenuClose = document.getElementById('mobileMenuClose');
+  const mobileProfileName = document.getElementById('mobileProfileName');
+  const mobileProfileRole = document.getElementById('mobileProfileRole');
+  const mobileNotifBadge = document.getElementById('mobileNotifBadge');
+  const mobileAdminShortcuts = document.getElementById('mobileAdminShortcuts');
+  const mobileBtnNewPinned = document.getElementById('mobileBtnNewPinned');
+  const mobileAvatar = document.querySelector('.mobile-avatar');
+  
+  // Atualizar perfil no menu mobile
+  function updateMobileProfileUI() {
+    if (!currentProfile || !mobileProfileName || !mobileProfileRole) return;
+    
+    mobileProfileName.textContent = currentProfile.full_name || "Usuário";
+    mobileProfileRole.textContent = currentProfile.role || "membro";
+    
+    // Atualizar avatar no menu mobile
+    if (mobileAvatar) {
+      const url = currentProfile.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
+      if (url) {
+        mobileAvatar.style.backgroundImage = `url('${url}')`;
+        mobileAvatar.style.backgroundSize = "cover";
+        mobileAvatar.style.backgroundPosition = "center";
+      } else {
+        mobileAvatar.style.backgroundImage = "";
+        mobileAvatar.style.background = "var(--accent-gradient)";
+        mobileAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
+        mobileAvatar.style.display = "flex";
+        mobileAvatar.style.alignItems = "center";
+        mobileAvatar.style.justifyContent = "center";
+        mobileAvatar.style.color = "white";
+        mobileAvatar.style.fontWeight = "700";
+        mobileAvatar.style.fontSize = "16px";
+      }
+    }
+    
+    // Mostrar atalhos admin se for admin
+    if (currentProfile.role === 'admin' && mobileAdminShortcuts) {
+      mobileAdminShortcuts.style.display = 'block';
+    } else if (mobileAdminShortcuts) {
+      mobileAdminShortcuts.style.display = 'none';
+    }
+  }
+  
+  // Atualizar badge de notificações no menu mobile
+  function updateMobileNotificationBadge(count) {
+    if (!mobileNotifBadge) return;
+    if (count > 0) {
+      mobileNotifBadge.textContent = count > 99 ? '99+' : String(count);
+      mobileNotifBadge.style.display = 'inline-flex';
+    } else {
+      mobileNotifBadge.style.display = 'none';
+    }
+  }
+  
+  // Sincronizar badge de notificações entre desktop e mobile
+  function syncNotificationBadges() {
+    if (notifBadge && mobileNotifBadge) {
+      const countText = notifBadge.textContent;
+      if (countText && countText !== '0') {
+        mobileNotifBadge.textContent = countText;
+        mobileNotifBadge.style.display = 'inline-flex';
+      } else {
+        mobileNotifBadge.style.display = 'none';
+      }
+    }
+  }
+  
+  // Abrir menu mobile
+  function openMobileMenu() {
+    if (mobileMenu) mobileMenu.classList.add('active');
+    if (mobileMenuOverlay) mobileMenuOverlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Atualizar UI quando abrir o menu
+    updateMobileProfileUI();
+    syncNotificationBadges();
+  }
+  
+  // Fechar menu mobile
+  function closeMobileMenu() {
+    if (mobileMenu) mobileMenu.classList.remove('active');
+    if (mobileMenuOverlay) mobileMenuOverlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  
+  // Configurar eventos
+  if (mobileMenuToggle) {
+    mobileMenuToggle.addEventListener('click', openMobileMenu);
+  }
+  
+  if (mobileMenuClose) {
+    mobileMenuClose.addEventListener('click', closeMobileMenu);
+  }
+  
+  if (mobileMenuOverlay) {
+    mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+  }
+  
+  // Configurar links do menu mobile
+  const mobileMenuLinks = document.querySelectorAll('.mobile-menu-link');
+  mobileMenuLinks.forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const view = this.getAttribute('data-view');
+      
+      // Remover active de todos os links
+      mobileMenuLinks.forEach(l => l.classList.remove('active'));
+      // Adicionar active ao link clicado
+      this.classList.add('active');
+      
+      // Também atualizar na sidebar desktop
+      const desktopLink = document.querySelector(`.side-link[data-view="${view}"]`);
+      if (desktopLink) {
+        document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+        desktopLink.classList.add('active');
+      }
+      
+      // Trocar view
+      switchView(view);
+      
+      // Fechar menu
+      closeMobileMenu();
+    });
+  });
+  
+  // Configurar botão "Novo aviso fixado" no mobile
+  if (mobileBtnNewPinned) {
+    mobileBtnNewPinned.addEventListener('click', function() {
+      if (currentProfile?.role !== 'admin') return;
+      forcePinOnPublish = true;
+      pendingFile = null;
+      
+      // Abrir modal de novo post
+      if (previewWrap) previewWrap.style.display = 'none';
+      if (previewImg) { previewImg.removeAttribute('src'); previewImg.src = ''; }
+      if (captionInput) captionInput.value = '';
+      postModal?.classList.add('show');
+      postModal?.setAttribute('aria-hidden', 'false');
+      
+      // Fechar menu mobile
+      closeMobileMenu();
+      
+      setTimeout(() => captionInput?.focus(), 50);
+    });
+  }
+  
+  // Observar mudanças no perfil principal para atualizar menu mobile
+  function observeProfileChanges() {
+    // Atualizar quando o perfil for carregado
+    if (currentProfile) {
+      updateMobileProfileUI();
+    }
+    
+    // Observar mudanças no DOM para sincronizar
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList' || mutation.type === 'characterData') {
+          // Verificar se o perfil desktop foi atualizado
+          if (miniProfileName && miniProfileName.textContent !== 'Usuário' && miniProfileName.textContent !== 'carregando…') {
+            updateMobileProfileUI();
+          }
+          
+          // Sincronizar badge de notificações
+          syncNotificationBadges();
+        }
+      });
+    });
+    
+    // Observar mudanças no nome do perfil desktop
+    if (miniProfileName) {
+      observer.observe(miniProfileName, { 
+        childList: true, 
+        characterData: true, 
+        subtree: true 
+      });
+    }
+    
+    // Observar mudanças no badge de notificações desktop
+    if (notifBadge) {
+      observer.observe(notifBadge, { 
+        childList: true, 
+        characterData: true, 
+        subtree: true 
+      });
+    }
+  }
+  
+  // Inicializar observador após o carregamento
+  setTimeout(observeProfileChanges, 1000);
+  
+  // Também atualizar quando houver interação com o perfil
+  document.addEventListener('profileUpdated', function() {
+    updateMobileProfileUI();
+  });
+  
+  // Fechar menu ao pressionar ESC
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && mobileMenu && mobileMenu.classList.contains('active')) {
+      closeMobileMenu();
+    }
+  });
+  
+  // Sincronizar automaticamente a cada 2 segundos (fallback)
+  setInterval(() => {
+    if (currentProfile && mobileProfileName && mobileProfileName.textContent === 'Usuário') {
+      updateMobileProfileUI();
+    }
+    syncNotificationBadges();
+  }, 2000);
+});
+
+// Adicione esta função para disparar evento quando o perfil for atualizado
+// Procure no código onde currentProfile é atualizado e adicione:
+// document.dispatchEvent(new CustomEvent('profileUpdated'));
