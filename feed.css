@@ -187,7 +187,6 @@ body {
     0 0 100px rgba(40, 110, 215, 0.3),
     inset 0 0 20px rgba(140, 200, 255, 0.6);
 }
-
 [data-theme="light"] .particle-gold {
   background: radial-gradient(circle at 30% 30%, 
     rgba(255, 210, 90, 0.95),
@@ -867,7 +866,7 @@ main#feed {
 /* ===================== BOTÃO + (DESCENTRALIZADO) ===================== */
 .add-post {
   position: fixed;
-  bottom: 22px;
+  bottom: 86px;
   right: 22px;
   width: 60px;
   height: 60px;
@@ -886,7 +885,7 @@ main#feed {
 
   box-shadow: 0 14px 40px rgba(199,125,255,0.35);
   transition: transform 0.25s ease;
-  z-index: 100;
+  z-index: 9999;
 }
 
 .add-post::before {
