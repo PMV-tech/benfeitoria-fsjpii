@@ -1,4 +1,5 @@
 // feed.js - VERSÃO COMPLETA (com posts sem imagem + modal de escolha)
+// WhatsApp fixado ABAIXO do botão de criação
 // -------------------------------------------------------------
 const supa = window.supa || window.supabaseClient;
 
@@ -32,7 +33,7 @@ function ensureWhatsFab() {
 
   a.style.position = "fixed";
   a.style.right = "22px";
-  a.style.bottom = "110px"; // acima do botão "+"
+  a.style.bottom = "22px"; // ALTERADO: agora na parte inferior (abaixo do botão "+")
   a.style.width = "54px";
   a.style.height = "54px";
   a.style.borderRadius = "50%";
@@ -41,7 +42,7 @@ function ensureWhatsFab() {
   a.style.justifyContent = "center";
   a.style.background = "#25D366";
   a.style.boxShadow = "0 12px 32px rgba(0,0,0,.35)";
-  a.style.zIndex = "9999";
+  a.style.zIndex = "9998"; // ALTERADO: z-index menor que o botão "+"
 
   a.innerHTML = `
     <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -1720,7 +1721,7 @@ function ensureEventStyles() {
       font-weight: 700;
     }
     .event-check input{ width: 16px; height: 16px; }
-    .event-divider{ height: 1px; background: var(--border-light); margin: 12px 0; opacity: .9; }
+    .event-divider{ height=1px; background: var(--border-light); margin: 12px 0; opacity: .9; }
   `;
   document.head.appendChild(style);
 }
@@ -2862,38 +2863,53 @@ async function renderPost(post) {
     visualContainer = postEl;
   }
 
-  // Actions
-  const actions = document.createElement("div");
-  actions.className = "post-actions";
-  actions.innerHTML = `
-    <button class="like-btn" aria-label="Curtir">🤍</button>
-    <button class="comment-btn" aria-label="Comentar">💬</button>
-    <span class="likes" style="cursor: pointer; transition: all 0.2s ease;" 
-          title="Clique para ver quem curtiu">${post.likes_count} curtidas</span>
-    <span class="comments-count">${post.comments_count} comentários</span>
-  `;
-  postEl.appendChild(actions);
+// Caption - criar primeiro
+const caption = document.createElement("p");
+caption.textContent = post.caption || "";
+caption.style.margin = "12px 12px 8px 12px";
+caption.style.color = "var(--text-primary)";
+caption.style.fontSize = "14px";
+caption.style.lineHeight = "1.4";
 
-  const likesSpan = postEl.querySelector(".likes");
-  likesSpan.addEventListener("click", async (e) => {
-    e.stopPropagation();
-    await abrirModalCurtidas(post.id, postEl);
-  });
+// Actions
+const actions = document.createElement("div");
+actions.className = "post-actions";
+actions.innerHTML = `
+  <button class="like-btn" aria-label="Curtir">🤍</button>
+  <button class="comment-btn" aria-label="Comentar">💬</button>
+  <span class="likes" style="cursor: pointer; transition: all 0.2s ease;" 
+        title="Clique para ver quem curtiu">${post.likes_count} curtidas</span>
+  <span class="comments-count">${post.comments_count} comentários</span>
+`;
 
-  likesSpan.addEventListener("mouseenter", () => {
-    likesSpan.style.opacity = "0.8";
-    likesSpan.style.textDecoration = "underline";
-  });
+const likesSpan = actions.querySelector(".likes");
+likesSpan.addEventListener("click", async (e) => {
+  e.stopPropagation();
+  await abrirModalCurtidas(post.id, postEl);
+});
 
-  likesSpan.addEventListener("mouseleave", () => {
-    likesSpan.style.opacity = "1";
-    likesSpan.style.textDecoration = "none";
-  });
+likesSpan.addEventListener("mouseenter", () => {
+  likesSpan.style.opacity = "0.8";
+  likesSpan.style.textDecoration = "underline";
+});
 
-  // Caption
-  const caption = document.createElement("p");
-  caption.textContent = post.caption || "";
-  postEl.appendChild(caption);
+likesSpan.addEventListener("mouseleave", () => {
+  likesSpan.style.opacity = "1";
+  likesSpan.style.textDecoration = "none";
+});
+
+// === ORDEM CORRETA DE RENDERIZAÇÃO (posts sem imagem + aviso, antes dos botões)===
+
+// Sempre: legenda PRIMEIRO, botões DEPOIS (para posts sem imagem)
+// Para posts COM imagem: imagem já foi adicionada antes
+if (!hasImage) {
+  postEl.appendChild(caption);   // Legenda PRIMEIRO
+  postEl.appendChild(actions);   // Botões DEPOIS
+} else {
+  // Para posts COM imagem: botões DEPOIS da imagem, legenda DEPOIS dos botões
+  postEl.appendChild(actions);   // Botões DEPOIS da imagem
+  postEl.appendChild(caption);   // Legenda DEPOIS dos botões
+}
 
   // Comments
   const commentsWrap = document.createElement("div");
@@ -4235,4 +4251,3 @@ function initRealtime() {
     console.warn("Realtime não disponível:", e?.message || e);
   }
 }
-
