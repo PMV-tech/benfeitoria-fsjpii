@@ -1166,54 +1166,71 @@ async function loadActivitySidebar() {
   activityList.innerHTML = "";
   activityEmpty.style.display = "none";
 
-  const { data, error } = await supa
-    .from("comments")
-    .select("id, post_id, user_id, content, created_at")
-    .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-    .order("created_at", { ascending: false })
-    .limit(8);
+  // VERIFICAÇÃO DE ADMIN - SOMENTE ADMINS PODEM VER
+  // Verificação segura para evitar erros
+  const isAdmin = currentProfile && currentProfile.role === "admin";
+  
+  if (!isAdmin) {
+    activityEmpty.textContent = "Atividade recente visível apenas para administradores";
+    activityEmpty.style.display = "";
+    return;
+  }
 
-  if (error) {
-    console.error(error);
+  // Se chegou aqui, é admin - carrega os dados normalmente
+  try {
+    const { data, error } = await supa
+      .from("comments")
+      .select("id, post_id, user_id, content, created_at")
+      .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order("created_at", { ascending: false })
+      .limit(8);
+
+    if (error) {
+      console.error(error);
+      activityEmpty.textContent = "Erro ao carregar atividade.";
+      activityEmpty.style.display = "";
+      return;
+    }
+
+    const list = Array.isArray(data) ? data : [];
+    if (!list.length) {
+      activityEmpty.textContent = "Sem atividade recente.";
+      activityEmpty.style.display = "";
+      return;
+    }
+
+    list.forEach((c) => {
+      const item = document.createElement("div");
+      item.className = "side-item";
+      item.dataset.postId = c.post_id;
+
+      const title = document.createElement("div");
+      title.className = "side-item-title";
+      title.textContent = profilesMap[c.user_id] || "Usuário";
+
+      const sub = document.createElement("div");
+      sub.className = "side-item-sub";
+      sub.textContent = (c.content || "").replace(/\s+/g, " ").trim() || "(comentário)";
+
+      item.appendChild(title);
+      item.appendChild(sub);
+
+      item.addEventListener("click", () => {
+        const target = document.querySelector(`.post[data-post-id="${c.post_id}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.classList.add("pulse-highlight");
+          setTimeout(() => target.classList.remove("pulse-highlight"), 1200);
+        }
+      });
+
+      activityList.appendChild(item);
+    });
+  } catch (err) {
+    console.error("Erro inesperado em loadActivitySidebar:", err);
     activityEmpty.textContent = "Erro ao carregar atividade.";
     activityEmpty.style.display = "";
-    return;
   }
-
-  const list = Array.isArray(data) ? data : [];
-  if (!list.length) {
-    activityEmpty.textContent = "Sem atividade recente.";
-    activityEmpty.style.display = "";
-    return;
-  }
-
-  list.forEach((c) => {
-    const item = document.createElement("div");
-    item.className = "side-item";
-    item.dataset.postId = c.post_id;
-
-    const title = document.createElement("div");
-    title.className = "side-item-title";
-    title.textContent = profilesMap[c.user_id] || "Usuário";
-
-    const sub = document.createElement("div");
-    sub.className = "side-item-sub";
-    sub.textContent = (c.content || "").replace(/\s+/g, " ").trim() || "(comentário)";
-
-    item.appendChild(title);
-    item.appendChild(sub);
-
-    item.addEventListener("click", () => {
-      const target = document.querySelector(`.post[data-post-id="${c.post_id}"]`);
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        target.classList.add("pulse-highlight");
-        setTimeout(() => target.classList.remove("pulse-highlight"), 1200);
-      }
-    });
-
-    activityList.appendChild(item);
-  });
 }
 
 
