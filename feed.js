@@ -4266,39 +4266,121 @@ document.addEventListener('DOMContentLoaded', function() {
   const mobileAvatar = document.querySelector('.mobile-avatar');
   
   // Atualizar perfil no menu mobile
-  function updateMobileProfileUI() {
-    if (!currentProfile || !mobileProfileName || !mobileProfileRole) return;
-    
-    mobileProfileName.textContent = currentProfile.full_name || "Usuário";
-    mobileProfileRole.textContent = currentProfile.role || "membro";
-    
-    // Atualizar avatar no menu mobile
-    if (mobileAvatar) {
-      const url = currentProfile.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
-      if (url) {
-        mobileAvatar.style.backgroundImage = `url('${url}')`;
-        mobileAvatar.style.backgroundSize = "cover";
-        mobileAvatar.style.backgroundPosition = "center";
-      } else {
-        mobileAvatar.style.backgroundImage = "";
-        mobileAvatar.style.background = "var(--accent-gradient)";
-        mobileAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
-        mobileAvatar.style.display = "flex";
-        mobileAvatar.style.alignItems = "center";
-        mobileAvatar.style.justifyContent = "center";
-        mobileAvatar.style.color = "white";
-        mobileAvatar.style.fontWeight = "700";
-        mobileAvatar.style.fontSize = "16px";
-      }
-    }
-    
-    // Mostrar atalhos admin se for admin
-    if (currentProfile.role === 'admin' && mobileAdminShortcuts) {
-      mobileAdminShortcuts.style.display = 'block';
-    } else if (mobileAdminShortcuts) {
-      mobileAdminShortcuts.style.display = 'none';
+// Atualizar perfil no menu mobile
+function updateMobileProfileUI() {
+  if (!currentProfile || !mobileProfileName || !mobileProfileRole) return;
+  
+  mobileProfileName.textContent = currentProfile.full_name || "Usuário";
+  mobileProfileRole.textContent = currentProfile.role || "membro";
+  
+  // Atualizar avatar no menu mobile
+  if (mobileAvatar) {
+    const url = currentProfile.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
+    if (url) {
+      mobileAvatar.style.backgroundImage = `url('${url}')`;
+      mobileAvatar.style.backgroundSize = "cover";
+      mobileAvatar.style.backgroundPosition = "center";
+      mobileAvatar.textContent = "";
+    } else {
+      mobileAvatar.style.backgroundImage = "";
+      mobileAvatar.style.background = "var(--accent-gradient)";
+      mobileAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
+      mobileAvatar.style.display = "flex";
+      mobileAvatar.style.alignItems = "center";
+      mobileAvatar.style.justifyContent = "center";
+      mobileAvatar.style.color = "white";
+      mobileAvatar.style.fontWeight = "700";
+      mobileAvatar.style.fontSize = "16px";
     }
   }
+  
+  // Mostrar atalhos admin se for admin
+  if (currentProfile.role === 'admin' && mobileAdminShortcuts) {
+    mobileAdminShortcuts.style.display = 'block';
+  } else if (mobileAdminShortcuts) {
+    mobileAdminShortcuts.style.display = 'none';
+  }
+}
+
+// Tornar o perfil mobile clicável
+// Tornar o perfil mobile clicável
+function wireMobileProfileClick() {
+  const mobileProfileContainer = document.querySelector('.mobile-profile');
+  if (!mobileProfileContainer) return;
+  
+  // Remove qualquer atributo de clique anterior
+  if (mobileProfileContainer.hasAttribute('data-click-wired')) {
+    mobileProfileContainer.removeAttribute('data-click-wired');
+  }
+  
+  // Marca como já configurado
+  mobileProfileContainer.setAttribute('data-click-wired', 'true');
+  
+  // Adiciona estilo de cursor pointer
+  mobileProfileContainer.style.cursor = 'pointer';
+  mobileProfileContainer.style.transition = 'all 0.2s ease';
+  mobileProfileContainer.style.borderRadius = '12px';
+  mobileProfileContainer.style.padding = '8px';
+  
+  // Remove qualquer event listener anterior
+  const newContainer = mobileProfileContainer.cloneNode(true);
+  mobileProfileContainer.parentNode.replaceChild(newContainer, mobileProfileContainer);
+  
+  // Adiciona hover effect via JavaScript
+  newContainer.addEventListener('mouseenter', function() {
+    if (window.innerWidth > 768) { // Apenas para desktop
+      this.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+      this.style.transform = 'translateX(2px)';
+    }
+  });
+  
+  newContainer.addEventListener('mouseleave', function() {
+    if (window.innerWidth > 768) {
+      this.style.backgroundColor = '';
+      this.style.transform = 'translateX(0)';
+    }
+  });
+  
+  // Adiciona touch effect para mobile
+  newContainer.addEventListener('touchstart', function() {
+    this.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+  });
+  
+  newContainer.addEventListener('touchend', function() {
+    this.style.backgroundColor = '';
+  });
+  
+  // Adiciona o clique principal
+  newContainer.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Fecha o menu mobile primeiro
+    closeMobileMenu();
+    
+    // Aguarda um pouco para garantir que o menu fechou
+    setTimeout(() => {
+      // Verifica se as funções estão disponíveis
+      if (typeof openEditProfileModal === 'function') {
+        openEditProfileModal();
+      } else {
+        console.warn('openEditProfileModal não está definida');
+        alert('Edição de perfil não disponível no momento.');
+      }
+    }, 300);
+  });
+  
+  // Torna o avatar e texto também clicáveis
+  const avatar = newContainer.querySelector('.mobile-avatar');
+  if (avatar) {
+    avatar.style.cursor = 'pointer';
+  }
+  
+  const mobileProfileText = newContainer.querySelector('.mobile-profile-text');
+  if (mobileProfileText) {
+    mobileProfileText.style.cursor = 'pointer';
+  }
+}
   
   // Atualizar badge de notificações no menu mobile
   function updateMobileNotificationBadge(count) {
@@ -4324,23 +4406,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Abrir menu mobile
-  function openMobileMenu() {
-    if (mobileMenu) mobileMenu.classList.add('active');
-    if (mobileMenuOverlay) mobileMenuOverlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
-    
-    // Atualizar UI quando abrir o menu
-    updateMobileProfileUI();
-    syncNotificationBadges();
+// Abrir menu mobile (se não existir)
+function openMobileMenu() {
+  const mobileMenu = document.getElementById('mobileMenu');
+  const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+  
+  if (mobileMenu) {
+    mobileMenu.classList.add('active');
+    mobileMenu.style.transform = 'translateX(0)';
   }
   
-  // Fechar menu mobile
-  function closeMobileMenu() {
-    if (mobileMenu) mobileMenu.classList.remove('active');
-    if (mobileMenuOverlay) mobileMenuOverlay.classList.remove('active');
-    document.body.style.overflow = '';
+  if (mobileMenuOverlay) {
+    mobileMenuOverlay.classList.add('active');
+    mobileMenuOverlay.style.opacity = '1';
+    mobileMenuOverlay.style.pointerEvents = 'auto';
   }
+  
+  document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.width = '100%';
+  
+  // Atualizar UI quando abrir o menu
+  updateMobileProfileUI();
+  wireMobileProfileClick();
+  syncNotificationBadges();
+}
+  
+// Fechar menu mobile (se não existir)
+function closeMobileMenu() {
+  const mobileMenu = document.getElementById('mobileMenu');
+  const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+  
+  if (mobileMenu) {
+    mobileMenu.classList.remove('active');
+    mobileMenu.style.transform = 'translateX(-100%)';
+  }
+  
+  if (mobileMenuOverlay) {
+    mobileMenuOverlay.classList.remove('active');
+    mobileMenuOverlay.style.opacity = '0';
+    mobileMenuOverlay.style.pointerEvents = 'none';
+  }
+  
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+}
   
   // Configurar eventos
   if (mobileMenuToggle) {
@@ -4467,6 +4577,7 @@ document.addEventListener('DOMContentLoaded', function() {
     syncNotificationBadges();
   }, 2000);
 });
+
 
 // Adicione esta função para disparar evento quando o perfil for atualizado
 // Procure no código onde currentProfile é atualizado e adicione:
