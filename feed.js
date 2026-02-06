@@ -1028,6 +1028,8 @@ async function abrirModalCurtidas(postId, postEl = null) {
 
       const avatarDiv = document.createElement("div");
       avatarDiv.className = "like-user-avatar";
+      avatarDiv.style.cursor = "pointer";
+      avatarDiv.style.transition = "all 0.2s ease";
 
       const isCurrentUser = like.user_id === currentUser?.id;
       const profile = isCurrentUser ? currentProfile : fullProfilesMap[like.user_id];
@@ -1044,6 +1046,24 @@ async function abrirModalCurtidas(postId, postEl = null) {
         avatarDiv.style.backgroundSize = "cover";
         avatarDiv.style.backgroundPosition = "center";
         avatarDiv.textContent = "";
+        avatarDiv.title = "Clique para ver foto de " + userName;
+        
+        // ADICIONA CLIQUE PARA VER FOTO INTEIRA
+        avatarDiv.addEventListener("click", (e) => {
+          e.stopPropagation();
+          abrirFotoTelaCheia(avatarUrl, userName);
+        });
+        
+        // Efeito hover
+        avatarDiv.addEventListener("mouseenter", () => {
+          avatarDiv.style.transform = "scale(1.05)";
+          avatarDiv.style.boxShadow = "0 0 0 3px rgba(212, 175, 55, 0.3)";
+        });
+        
+        avatarDiv.addEventListener("mouseleave", () => {
+          avatarDiv.style.transform = "scale(1)";
+          avatarDiv.style.boxShadow = "none";
+        });
       } else {
         // NÃO TEM FOTO: mostra iniciais
         avatarDiv.style.backgroundImage = "";
@@ -1054,15 +1074,32 @@ async function abrirModalCurtidas(postId, postEl = null) {
         avatarDiv.style.color = "white";
         avatarDiv.style.fontWeight = "700";
         avatarDiv.style.fontSize = "16px";
+        avatarDiv.title = "Ver perfil de " + userName;
+        
+        // Se não tem foto, abre perfil
+        avatarDiv.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openViewProfileModal(like.user_id);
+        });
       }
 
-      avatarDiv.title = userName;
-
       const infoDiv = document.createElement("div");
+      infoDiv.style.flex = "1";
+      infoDiv.style.minWidth = "0";
 
       const nameDiv = document.createElement("div");
       nameDiv.className = "like-user-name";
       nameDiv.textContent = userName;
+      nameDiv.style.cursor = "pointer";
+      nameDiv.title = "Ver perfil";
+      nameDiv.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (avatarUrl) {
+          abrirFotoTelaCheia(avatarUrl, userName);
+        } else {
+          openViewProfileModal(like.user_id);
+        }
+      });
 
       const dateDiv = document.createElement("div");
       dateDiv.className = "like-user-date";
@@ -4934,7 +4971,172 @@ function closeMobileMenu() {
   }, 2000);
 });
 
+function abrirFotoTelaCheia(fotoUrl, nomeUsuario) {
+  if (!fotoUrl) {
+    console.log("Nenhuma foto para exibir");
+    return;
+  }
+  
+  // Verificar se já existe um modal aberto
+  if (document.querySelector('.fullscreen-avatar-modal')) {
+    document.body.removeChild(document.querySelector('.fullscreen-avatar-modal'));
+  }
+  
+  const modal = document.createElement("div");
+  modal.className = "fullscreen-avatar-modal";
+  modal.style.position = "fixed";
+  modal.style.top = "0";
+  modal.style.left = "0";
+  modal.style.width = "100vw";
+  modal.style.height = "100vh";
+  modal.style.backgroundColor = "rgba(0, 0, 0, 0.95)";
+  modal.style.display = "flex";
+  modal.style.flexDirection = "column";
+  modal.style.alignItems = "center";
+  modal.style.justifyContent = "center";
+  modal.style.zIndex = "10000";
+  modal.style.cursor = "pointer";
+  modal.style.backdropFilter = "blur(10px)";
+  modal.style.padding = "20px";
+  modal.style.overflow = "hidden";
 
+  const container = document.createElement("div");
+  container.style.maxWidth = "90vw";
+  container.style.maxHeight = "90vh";
+  container.style.display = "flex";
+  container.style.flexDirection = "column";
+  container.style.alignItems = "center";
+  container.style.justifyContent = "center";
+  container.style.gap = "16px";
+
+  const avatarImg = document.createElement("img");
+  avatarImg.src = fotoUrl;
+  avatarImg.style.maxWidth = "100%";
+  avatarImg.style.maxHeight = "70vh";
+  avatarImg.style.objectFit = "contain";
+  avatarImg.style.borderRadius = "20px";
+  avatarImg.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5)";
+  avatarImg.style.cursor = "default";
+  avatarImg.style.animation = "zoomInAvatar 0.3s ease forwards";
+
+  // Adicionar indicador de carregamento
+  avatarImg.onload = function() {
+    avatarImg.style.opacity = "1";
+  };
+  avatarImg.style.opacity = "0";
+  avatarImg.style.transition = "opacity 0.3s ease";
+
+  if (nomeUsuario) {
+    const nomeDiv = document.createElement("div");
+    nomeDiv.textContent = nomeUsuario;
+    nomeDiv.style.color = "white";
+    nomeDiv.style.fontWeight = "bold";
+    nomeDiv.style.fontSize = "18px";
+    nomeDiv.style.textAlign = "center";
+    nomeDiv.style.marginTop = "10px";
+    nomeDiv.style.textShadow = "0 2px 4px rgba(0,0,0,0.5)";
+    container.appendChild(nomeDiv);
+  }
+
+  const fecharText = document.createElement("div");
+  fecharText.textContent = "Clique em qualquer lugar para fechar";
+  fecharText.style.color = "rgba(255, 255, 255, 0.7)";
+  fecharText.style.fontSize = "14px";
+  fecharText.style.marginTop = "10px";
+  fecharText.style.textShadow = "0 1px 2px rgba(0,0,0,0.5)";
+
+  container.appendChild(avatarImg);
+  container.appendChild(fecharText);
+  modal.appendChild(container);
+
+  document.body.appendChild(modal);
+
+  // Fechar ao clicar
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal || e.target === fecharText || e.target === container) {
+      modal.style.animation = "fadeOut 0.2s ease forwards";
+      setTimeout(() => {
+        if (modal.parentNode) {
+          document.body.removeChild(modal);
+        }
+      }, 200);
+    }
+  });
+
+  // Fechar com ESC
+  const fecharComEsc = (e) => {
+    if (e.key === "Escape") {
+      modal.style.animation = "fadeOut 0.2s ease forwards";
+      setTimeout(() => {
+        if (modal.parentNode) {
+          document.body.removeChild(modal);
+        }
+        document.removeEventListener("keydown", fecharComEsc);
+      }, 200);
+    }
+  };
+  
+  document.addEventListener("keydown", fecharComEsc);
+  
+  // Adicionar animação CSS dinamicamente
+  if (!document.getElementById('avatar-modal-animations')) {
+    const style = document.createElement('style');
+    style.id = 'avatar-modal-animations';
+    style.textContent = `
+      @keyframes zoomInAvatar {
+        from { 
+          transform: scale(0.9); 
+          opacity: 0; 
+        }
+        to { 
+          transform: scale(1); 
+          opacity: 1; 
+        }
+      }
+      @keyframes fadeOut {
+        from { 
+          opacity: 1; 
+        }
+        to { 
+          opacity: 0; 
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  return modal;
+}
+
+// Função auxiliar para carregar perfis completos (com avatar_url)
+async function loadFullProfiles(userIds) {
+  try {
+    const ids = Array.from(new Set((userIds || []).filter(Boolean)));
+    if (!ids.length) return {};
+
+    const { data, error } = await supa
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .in("id", ids);
+
+    if (error) {
+      console.error("Erro ao carregar perfis completos:", error);
+      return {};
+    }
+
+    const profilesMap = {};
+    (data || []).forEach((p) => {
+      profilesMap[p.id] = {
+        full_name: p.full_name || "Usuário",
+        avatar_url: p.avatar_url
+      };
+    });
+
+    return profilesMap;
+  } catch (_) {
+    return {};
+  }
+}
 // Adicione esta função para disparar evento quando o perfil for atualizado
 // Procure no código onde currentProfile é atualizado e adicione:
 // document.dispatchEvent(new CustomEvent('profileUpdated'));
