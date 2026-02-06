@@ -417,6 +417,13 @@ main#feed {
   border-radius: 12px;
   background: var(--accent-gradient);
   box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+}
 }
 
 .profile-mini-text .profile-name {
@@ -1702,3 +1709,4 @@ main#feed {
     padding-left: 60px;
   }
 }
+
