@@ -1982,6 +1982,296 @@ function renderEventModalRsvp(eventId) {
     const s = btn.getAttribute("data-rsvp");
     btn.classList.toggle("active", s === status);
   });
+  
+  // === AQUI VOCÊ ADICIONA O CÓDIGO ===
+  // Remove botão anterior se existir
+  const existingBtn = eventModal.querySelector("#viewParticipantsBtn");
+  if (existingBtn) existingBtn.remove();
+  
+  // Adicionar botão para ver participantes (apenas admin)
+  if (currentProfile?.role === "admin") {
+    const btn = document.createElement("button");
+    btn.id = "viewParticipantsBtn";
+    btn.type = "button";
+    btn.textContent = "👥 Ver participantes";
+    btn.style.marginTop = "10px";
+    btn.style.width = "100%";
+    btn.style.padding = "10px 14px";
+    btn.style.borderRadius = "14px";
+    btn.style.border = "1px solid var(--border-color)";
+    btn.style.background = "var(--button-bg)";
+    btn.style.color = "var(--text-primary)";
+    btn.style.cursor = "pointer";
+    btn.style.fontWeight = "800";
+    btn.style.fontSize = "14px";
+    
+    btn.addEventListener("click", () => {
+      openParticipantsModal(eventId);
+    });
+    
+    // Adiciona após os botões de RSVP
+    const rsvpRow = eventModal.querySelector("#evRsvpRow");
+    if (rsvpRow) {
+      rsvpRow.parentNode.insertBefore(btn, rsvpRow.nextSibling);
+    }
+  }
+}
+
+let participantsModal = null;
+
+function ensureParticipantsModal() {
+  if (participantsModal) return participantsModal;
+
+  participantsModal = document.createElement("div");
+  participantsModal.className = "modal";
+  participantsModal.id = "participantsModal";
+  participantsModal.setAttribute("aria-hidden", "true");
+  participantsModal.style.display = "none";
+
+  const card = document.createElement("div");
+  card.className = "modal-card";
+  card.style.maxWidth = "500px";
+  card.style.maxHeight = "70vh";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "modal-close";
+  closeBtn.type = "button";
+  closeBtn.textContent = "×";
+  closeBtn.setAttribute("aria-label", "Fechar");
+  closeBtn.addEventListener("click", () => closeParticipantsModal());
+
+  const title = document.createElement("h3");
+  title.textContent = "Participantes do Evento";
+  title.style.marginBottom = "16px";
+
+  const tabsContainer = document.createElement("div");
+  tabsContainer.style.display = "flex";
+  tabsContainer.style.gap = "8px";
+  tabsContainer.style.marginBottom = "16px";
+  tabsContainer.style.borderBottom = "1px solid var(--border-color)";
+  tabsContainer.style.paddingBottom = "10px";
+
+  const tabs = ["Vou", "Talvez", "Não vou"];
+  const tabContents = document.createElement("div");
+  tabContents.style.display = "flex";
+  tabContents.style.flexDirection = "column";
+  tabContents.style.gap = "8px";
+
+  tabs.forEach(tab => {
+    const tabBtn = document.createElement("button");
+    tabBtn.type = "button";
+    tabBtn.textContent = tab;
+    tabBtn.dataset.status = getStatusKey(tab);
+    tabBtn.style.padding = "8px 16px";
+    tabBtn.style.borderRadius = "10px";
+    tabBtn.style.border = "1px solid var(--border-color)";
+    tabBtn.style.background = "var(--button-bg)";
+    tabBtn.style.color = "var(--text-primary)";
+    tabBtn.style.cursor = "pointer";
+    tabBtn.style.fontWeight = "800";
+    tabBtn.style.fontSize = "13px";
+    tabBtn.style.flex = "1";
+
+    tabBtn.addEventListener("click", () => {
+      // Remove active de todos
+      tabsContainer.querySelectorAll("button").forEach(b => {
+        b.style.background = "var(--button-bg)";
+        b.style.borderColor = "var(--border-color)";
+      });
+      // Ativa o atual
+      tabBtn.style.background = "var(--accent-gradient)";
+      tabBtn.style.borderColor = "transparent";
+      tabBtn.style.color = "white";
+      
+      // Carrega participantes com esse status
+      loadParticipantsForTab(eventModal.dataset.currentEventId, getStatusKey(tab), tabContents);
+    });
+
+    tabsContainer.appendChild(tabBtn);
+  });
+
+  // Área para lista de participantes
+  const participantsList = document.createElement("div");
+  participantsList.id = "participantsList";
+  participantsList.style.flex = "1";
+  participantsList.style.overflowY = "auto";
+  participantsList.style.padding = "10px";
+  participantsList.style.borderRadius = "12px";
+  participantsList.style.border = "1px solid var(--border-light)";
+  participantsList.style.background = "var(--bg-secondary)";
+  participantsList.style.maxHeight = "300px";
+
+  tabContents.appendChild(participantsList);
+
+  card.appendChild(closeBtn);
+  card.appendChild(title);
+  card.appendChild(tabsContainer);
+  card.appendChild(tabContents);
+
+  participantsModal.appendChild(card);
+  document.body.appendChild(participantsModal);
+
+  // Fechar ao clicar fora
+  participantsModal.addEventListener("click", (e) => {
+    if (e.target === participantsModal) closeParticipantsModal();
+  });
+
+  return participantsModal;
+}
+
+function getStatusKey(tabName) {
+  switch(tabName) {
+    case "Vou": return "going";
+    case "Talvez": return "maybe";
+    case "Não vou": return "no";
+    default: return "going";
+  }
+}
+
+async function openParticipantsModal(eventId) {
+  ensureParticipantsModal();
+  eventModal.dataset.currentEventId = eventId;
+  
+  participantsModal.style.display = "flex";
+  participantsModal.classList.add("show");
+  participantsModal.setAttribute("aria-hidden", "false");
+  
+  // Ativa a primeira aba e carrega
+  const firstTab = participantsModal.querySelector("button[data-status]");
+  if (firstTab) {
+    firstTab.click();
+  }
+}
+
+function closeParticipantsModal() {
+  if (!participantsModal) return;
+  participantsModal.style.display = "none";
+  participantsModal.classList.remove("show");
+  participantsModal.setAttribute("aria-hidden", "true");
+}
+
+async function loadParticipantsForTab(eventId, status, container) {
+  const participantsList = container.querySelector("#participantsList");
+  if (!participantsList) return;
+
+  participantsList.innerHTML = `
+    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Carregando participantes...</p>
+    </div>
+  `;
+
+  try {
+    // Busca os RSVPs para este evento e status
+    const { data: rsvps, error } = await supa
+      .from("event_rsvps")
+      .select("user_id, created_at")
+      .eq("event_id", eventId)
+      .eq("status", status)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // Busca os perfis dos usuários
+    const userIds = rsvps.map(r => r.user_id);
+    const { data: profiles } = await supa
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .in("id", userIds);
+
+    // Cria mapa de perfis
+    const profilesMap = {};
+    (profiles || []).forEach(p => {
+      profilesMap[p.id] = p;
+    });
+
+    // Renderiza a lista
+    participantsList.innerHTML = "";
+    
+    if (!rsvps.length) {
+      participantsList.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+          <i class="far fa-user"></i>
+          <p>Nenhum participante</p>
+        </div>
+      `;
+      return;
+    }
+
+    rsvps.forEach(rsvp => {
+      const profile = profilesMap[rsvp.user_id];
+      const userName = profile?.full_name || "Usuário";
+      const userAvatar = profile?.avatar_url || "";
+      
+      const participantDiv = document.createElement("div");
+      participantDiv.className = "participant-item";
+      participantDiv.style.display = "flex";
+      participantDiv.style.alignItems = "center";
+      participantDiv.style.gap = "12px";
+      participantDiv.style.padding = "12px";
+      participantDiv.style.borderBottom = "1px solid var(--border-light)";
+      participantDiv.style.borderRadius = "10px";
+      participantDiv.style.marginBottom = "8px";
+      participantDiv.style.background = "var(--bg-card)";
+      
+      // Avatar
+      const avatarDiv = document.createElement("div");
+      avatarDiv.style.width = "40px";
+      avatarDiv.style.height = "40px";
+      avatarDiv.style.borderRadius = "50%";
+      avatarDiv.style.overflow = "hidden";
+      avatarDiv.style.flexShrink = "0";
+      
+      if (userAvatar) {
+        const img = document.createElement("img");
+        img.src = getAvatarPublicUrl(userAvatar);
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+        avatarDiv.appendChild(img);
+      } else {
+        avatarDiv.style.background = "var(--accent-gradient)";
+        avatarDiv.style.display = "flex";
+        avatarDiv.style.alignItems = "center";
+        avatarDiv.style.justifyContent = "center";
+        avatarDiv.style.color = "white";
+        avatarDiv.style.fontWeight = "bold";
+        avatarDiv.textContent = userName.charAt(0).toUpperCase();
+      }
+      
+      // Informações
+      const infoDiv = document.createElement("div");
+      infoDiv.style.flex = "1";
+      
+      const nameDiv = document.createElement("div");
+      nameDiv.style.fontWeight = "800";
+      nameDiv.style.color = "var(--text-primary)";
+      nameDiv.style.fontSize = "14px";
+      nameDiv.textContent = userName;
+      
+      const dateDiv = document.createElement("div");
+      dateDiv.style.color = "var(--text-muted)";
+      dateDiv.style.fontSize = "12px";
+      dateDiv.textContent = `Confirmado em: ${fmtDateBR(rsvp.created_at)}`;
+      
+      infoDiv.appendChild(nameDiv);
+      infoDiv.appendChild(dateDiv);
+      
+      participantDiv.appendChild(avatarDiv);
+      participantDiv.appendChild(infoDiv);
+      participantsList.appendChild(participantDiv);
+    });
+
+  } catch (error) {
+    console.error("Erro ao carregar participantes:", error);
+    participantsList.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: var(--danger-color);">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>Erro ao carregar participantes</p>
+        <small>Tente novamente mais tarde</small>
+      </div>
+    `;
+  }
 }
 
 // Create/Update event
