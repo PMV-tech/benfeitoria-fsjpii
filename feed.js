@@ -1,6 +1,3 @@
-// feed.js - VERSÃO COMPLETA (com posts sem imagem + modal de escolha)
-// WhatsApp fixado ABAIXO do botão de criação
-// -------------------------------------------------------------
 const supa = window.supa || window.supabaseClient;
 
 if (!supa) {
@@ -15,9 +12,6 @@ const feed = document.getElementById("feed");
 // Topbar
 const topbarTitle = document.querySelector(".topbar h2");
 
-
-// ===== WhatsApp (atalho fixo) =====
-// Troque o número abaixo (somente dígitos, com DDI). Ex: 5511999999999
 const WHATS_NUMBER = "5511944809104";
 const WHATS_TEXT = "Olá! Vim pelo Web-Site da Benfeitoria FSJPII. O site está demais.";
 
@@ -33,7 +27,7 @@ function ensureWhatsFab() {
 
   a.style.position = "fixed";
   a.style.right = "22px";
-  a.style.bottom = "22px"; // ALTERADO: agora na parte inferior (abaixo do botão "+")
+  a.style.bottom = "22px"; 
   a.style.width = "54px";
   a.style.height = "54px";
   a.style.borderRadius = "50%";
@@ -42,7 +36,7 @@ function ensureWhatsFab() {
   a.style.justifyContent = "center";
   a.style.background = "#25D366";
   a.style.boxShadow = "0 12px 32px rgba(0,0,0,.35)";
-  a.style.zIndex = "9999"; // ALTERADO: z-index menor que o botão "+"
+  a.style.zIndex = "9999"; 
 
   a.innerHTML = `
     <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -86,7 +80,7 @@ function ensurePreviewVideo() {
   v.style.borderRadius = "16px";
   v.style.maxHeight = "260px";
   v.style.objectFit = "cover";
-  // coloca o vídeo junto da imagem (mesma área de prévia)
+ 
   previewWrap.appendChild(v);
   previewVideo = v;
   return v;
@@ -174,16 +168,25 @@ const eventsList = document.getElementById("eventsList");
 const eventsEmpty = document.getElementById("eventsEmpty");
 const btnNewEvent = document.getElementById("btnNewEvent");
 
-// Notificações: last seen (localStorage por usuário)
+// Notificações: last seen (persiste no Supabase quando possível; fallback localStorage)
 function notifKey() {
   return currentUser?.id ? `notif_last_seen_${currentUser.id}` : "notif_last_seen";
 }
-function getNotifLastSeen() {
-  const v = localStorage.getItem(notifKey());
-  return v ? new Date(v) : new Date(0);
+
+let notifLastSeenCache = null;          // Date
+let notifSeenColSupported = null;       // null = desconhecido | true | false
+
+function getNotifLastSeenLocal() {
+  try {
+    const v = localStorage.getItem(notifKey());
+    return v ? new Date(v) : new Date(0);
+  } catch (_) {
+    return new Date(0);
+  }
 }
-function setNotifLastSeenNow() {
-  localStorage.setItem(notifKey(), new Date().toISOString());
+
+function setNotifLastSeenLocal(d) {
+  try { localStorage.setItem(notifKey(), d.toISOString()); } catch (_) {}
 }
 
 function notifExpireKey(){ return currentUser?.id ? `notif_seen_expire_${currentUser.id}` : 'notif_seen_expire'; }
@@ -198,6 +201,85 @@ function cleanupNotifExpire(){
   }catch(_){ }
 }
 
+// Busca last_seen do banco (profiles.notif_last_seen) se a coluna existir
+async function getNotifLastSeen() {
+  if (notifLastSeenCache instanceof Date) return notifLastSeenCache;
+
+  const local = getNotifLastSeenLocal();
+  if (!currentUser?.id) {
+    notifLastSeenCache = local;
+    return local;
+  }
+
+  if (notifSeenColSupported === false) {
+    notifLastSeenCache = local;
+    return local;
+  }
+
+  try {
+    const { data, error } = await supa
+      .from("profiles")
+      .select("notif_last_seen")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (error) {
+      const msg = String(error.message || "");
+      const det = String(error.details || "");
+      if (msg.includes("column") || det.includes("column") || msg.includes("does not exist") || det.includes("does not exist")) {
+        notifSeenColSupported = false;
+      }
+      notifLastSeenCache = local;
+      return local;
+    }
+
+    notifSeenColSupported = true;
+
+    const dbVal = data?.notif_last_seen ? new Date(data.notif_last_seen) : null;
+    if (dbVal && !isNaN(dbVal.getTime())) {
+      notifLastSeenCache = dbVal;
+      // sincroniza localStorage para ficar consistente
+      setNotifLastSeenLocal(dbVal);
+      return dbVal;
+    }
+
+    notifLastSeenCache = local;
+    return local;
+  } catch (_) {
+    notifLastSeenCache = local;
+    return local;
+  }
+}
+
+// Marca como lido: salva em localStorage e tenta persistir no Supabase
+async function setNotifLastSeenNow() {
+  const now = new Date();
+  notifLastSeenCache = now;
+
+  setNotifLastSeenLocal(now);
+  setNotifExpire();
+
+  if (!currentUser?.id) return;
+
+  if (notifSeenColSupported === false) return;
+
+  try {
+    const { error } = await supa
+      .from("profiles")
+      .update({ notif_last_seen: now.toISOString() })
+      .eq("id", currentUser.id);
+
+    if (error) {
+      const msg = String(error.message || "");
+      const det = String(error.details || "");
+      if (msg.includes("column") || det.includes("column") || msg.includes("does not exist") || det.includes("does not exist")) {
+        notifSeenColSupported = false;
+      }
+    } else {
+      notifSeenColSupported = true;
+    }
+  } catch (_) {}
+}
 
 // Botão +
 const addPostBtn = document.querySelector(".add-post");
@@ -1303,11 +1385,10 @@ function setupMenu() {
   });
 
   // Botões de ação
-  btnMarkRead?.addEventListener("click", () => {
-    setNotifLastSeenNow();
-    setNotifExpire();
-    loadNotificationsBadge();
-    loadNotificationsView();
+  btnMarkRead?.addEventListener("click", async () => {
+    await setNotifLastSeenNow();
+    await loadNotificationsBadge();
+    await loadNotificationsView();
   });
 
   // Central "Novo aviso fixado" (somente admin)
@@ -1350,61 +1431,65 @@ async function fetchNotifications(limit = 50) {
   const seen = new Set();
 
   const myPostIds = await fetchMyPostIds();
-  if (!myPostIds.length) return [];
 
+  // IMPORTANTE:
+  // Usuários "comuns" não criam posts, mas ainda podem (e devem) receber notificações
+  // de respostas/curtidas nos comentários deles. Por isso NÃO retornamos aqui.
 
   const cutoffIso = new Date(Date.now() - NOTIF_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  // Likes em posts meus
-  try {
-    const { data } = await supa
-      .from("likes")
-      .select("created_at, user_id, post_id")
-      .in("post_id", myPostIds)
-      .neq("user_id", currentUser.id)
-      .gte("created_at", cutoffIso)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+  if (myPostIds.length) {
+    // Likes em posts meus
+    try {
+      const { data } = await supa
+        .from("likes")
+        .select("created_at, user_id, post_id")
+        .in("post_id", myPostIds)
+        .neq("user_id", currentUser.id)
+        .gte("created_at", cutoffIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
 
-    (data || []).forEach((l) => {
-      const key = `like:${l.user_id}:${l.post_id}:${l.created_at}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      items.push({
-        type: "like",
-        id: key,
-        created_at: l.created_at,
-        actor_id: l.user_id,
-        post_id: l.post_id,
+      (data || []).forEach((l) => {
+        const key = `like:${l.user_id}:${l.post_id}:${l.created_at}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({
+          type: "like",
+          id: key,
+          created_at: l.created_at,
+          actor_id: l.user_id,
+          post_id: l.post_id,
+        });
       });
-    });
-  } catch (_) {}
+    } catch (_) {}
 
-  // Comentários em posts meus (inclui respostas)
-  try {
-    const { data } = await supa
-      .from("comments")
-      .select("id, created_at, user_id, post_id, parent_comment_id, content")
-      .in("post_id", myPostIds)
-      .neq("user_id", currentUser.id)
-      .gte("created_at", cutoffIso)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    // Comentários em posts meus (inclui respostas)
+    try {
+      const { data } = await supa
+        .from("comments")
+        .select("id, created_at, user_id, post_id, parent_comment_id, content")
+        .in("post_id", myPostIds)
+        .neq("user_id", currentUser.id)
+        .gte("created_at", cutoffIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
 
-    (data || []).forEach((c) => {
-      const key = `comment:${c.id}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      items.push({
-        type: c.parent_comment_id ? "reply_on_post" : "comment",
-        id: c.id,
-        created_at: c.created_at,
-        actor_id: c.user_id,
-        post_id: c.post_id,
-        text: c.content || "",
+      (data || []).forEach((c) => {
+        const key = `comment:${c.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        items.push({
+          type: c.parent_comment_id ? "reply_on_post" : "comment",
+          id: c.id,
+          created_at: c.created_at,
+          actor_id: c.user_id,
+          post_id: c.post_id,
+          text: c.content || "",
+        });
       });
-    });
-  } catch (_) {}
+    } catch (_) {}
+  }
 
   // Respostas aos meus comentários (quando eu comento em qualquer post)
   try {
@@ -1545,7 +1630,7 @@ function renderNotifItem(n, unread) {
 async function loadNotificationsBadge() {
   if (!notifBadge) return;
 
-  const lastSeen = getNotifLastSeen();
+  const lastSeen = await getNotifLastSeen();
   const list = await fetchNotifications(60);
   const unreadCount = list.filter((n) => new Date(n.created_at) > lastSeen).length;
 
@@ -1563,7 +1648,7 @@ async function loadNotificationsView() {
   notifList.innerHTML = "";
   notifEmpty.style.display = "none";
 
-  const lastSeen = getNotifLastSeen();
+  const lastSeen = await getNotifLastSeen();
   const list = await fetchNotifications(60);
 
   if (!list.length) {
@@ -4884,8 +4969,3 @@ function closeMobileMenu() {
     syncNotificationBadges();
   }, 2000);
 });
-
-
-// Adicione esta função para disparar evento quando o perfil for atualizado
-// Procure no código onde currentProfile é atualizado e adicione:
-// document.dispatchEvent(new CustomEvent('profileUpdated'));
