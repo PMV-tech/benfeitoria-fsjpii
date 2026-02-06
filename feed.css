@@ -424,7 +424,6 @@ main#feed {
   font-weight: bold;
   font-size: 14px;
 }
-}
 
 .profile-mini-text .profile-name {
   font-weight: 900;
@@ -1056,6 +1055,38 @@ main#feed {
   background: var(--button-hover);
   transform: translateY(-2px);
   border-color: var(--border-color);
+}
+
+/* ===================== MODAL DE PARTICIPANTES ===================== */
+#participantsModal .modal-card {
+  max-width: 500px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.participant-item {
+  transition: all 0.2s ease;
+}
+
+.participant-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Scrollbar para lista de participantes */
+#participantsList::-webkit-scrollbar {
+  width: 8px;
+}
+
+#participantsList::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+#participantsList::-webkit-scrollbar-thumb {
+  background: var(--accent-gradient);
+  border-radius: 10px;
 }
 
 /* ===================== MODAL DE IMAGEM EM TELA CHEIA ===================== */
@@ -1709,4 +1740,3 @@ main#feed {
     padding-left: 60px;
   }
 }
-
