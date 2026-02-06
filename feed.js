@@ -656,9 +656,163 @@ function closeViewProfileModal() {
 function wireProfileMini() {
   const mini = document.querySelector(".profile-mini");
   if (!mini) return;
-  mini.style.cursor = "pointer";
-  mini.title = "Clique para editar seu perfil";
-  mini.addEventListener("click", () => openEditProfileModal());
+  
+  // Clonar para limpar event listeners antigos
+  const newMini = mini.cloneNode(true);
+  mini.parentNode.replaceChild(newMini, mini);
+  
+  newMini.style.cursor = "pointer";
+  newMini.title = "Clique para editar seu perfil ou ver foto";
+  
+  newMini.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Verificar se clicou diretamente no avatar
+    const avatar = newMini.querySelector(".avatar-mini");
+    const clickedAvatar = e.target === avatar || avatar.contains(e.target);
+    
+    if (clickedAvatar && currentProfile?.avatar_url) {
+      // Se clicou no avatar E tem foto, abre foto em tela cheia
+      const url = getAvatarPublicUrl(currentProfile.avatar_url);
+      if (url) {
+        const modal = document.createElement("div");
+        modal.className = "fullscreen-avatar-modal";
+        modal.style.position = "fixed";
+        modal.style.top = "0";
+        modal.style.left = "0";
+        modal.style.width = "100vw";
+        modal.style.height = "100vh";
+        modal.style.backgroundColor = "rgba(0, 0, 0, 0.95)";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.zIndex = "10001";
+        modal.style.cursor = "pointer";
+        modal.style.backdropFilter = "blur(10px)";
+        modal.style.padding = "20px";
+        
+        const img = document.createElement("img");
+        img.src = url;
+        img.style.maxWidth = "90vw";
+        img.style.maxHeight = "90vh";
+        img.style.objectFit = "contain";
+        img.style.borderRadius = "10px";
+        img.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5)";
+        img.style.cursor = "default";
+        img.style.animation = "zoomIn 0.3s ease";
+        
+        modal.appendChild(img);
+        document.body.appendChild(modal);
+        
+        // Fechar ao clicar
+        modal.addEventListener("click", () => {
+          modal.style.animation = "fadeOut 0.2s ease forwards";
+          setTimeout(() => {
+            if (modal.parentNode) {
+              document.body.removeChild(modal);
+            }
+          }, 200);
+        });
+        
+        // Fechar com ESC
+        const fecharComEsc = (e) => {
+          if (e.key === "Escape") {
+            modal.style.animation = "fadeOut 0.2s ease forwards";
+            setTimeout(() => {
+              if (modal.parentNode) {
+                document.body.removeChild(modal);
+              }
+              document.removeEventListener("keydown", fecharComEsc);
+            }, 200);
+          }
+        };
+        
+        document.addEventListener("keydown", fecharComEsc);
+        return; // Para aqui, não abre edição de perfil
+      }
+    }
+    
+    // Se clicou em outra parte ou não tem foto, abre edição de perfil
+    openEditProfileModal();
+  });
+  
+  // Também tornar o avatar individualmente clicável
+  const avatarMini = newMini.querySelector(".avatar-mini");
+  if (avatarMini) {
+    // Clonar avatar também
+    const newAvatar = avatarMini.cloneNode(true);
+    avatarMini.parentNode.replaceChild(newAvatar, avatarMini);
+    
+    newAvatar.style.cursor = "pointer";
+    
+    newAvatar.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      // Se tem foto, abre foto
+      if (currentProfile?.avatar_url) {
+        const url = getAvatarPublicUrl(currentProfile.avatar_url);
+        if (url) {
+          const modal = document.createElement("div");
+          modal.className = "fullscreen-avatar-modal";
+          modal.style.position = "fixed";
+          modal.style.top = "0";
+          modal.style.left = "0";
+          modal.style.width = "100vw";
+          modal.style.height = "100vh";
+          modal.style.backgroundColor = "rgba(0, 0, 0, 0.95)";
+          modal.style.display = "flex";
+          modal.style.alignItems = "center";
+          modal.style.justifyContent = "center";
+          modal.style.zIndex = "10001";
+          modal.style.cursor = "pointer";
+          modal.style.backdropFilter = "blur(10px)";
+          modal.style.padding = "20px";
+          
+          const img = document.createElement("img");
+          img.src = url;
+          img.style.maxWidth = "90vw";
+          img.style.maxHeight = "90vh";
+          img.style.objectFit = "contain";
+          img.style.borderRadius = "10px";
+          img.style.boxShadow = "0 20px 60px rgba(0,0,0,0.5)";
+          img.style.cursor = "default";
+          img.style.animation = "zoomIn 0.3s ease";
+          
+          modal.appendChild(img);
+          document.body.appendChild(modal);
+          
+          modal.addEventListener("click", () => {
+            modal.style.animation = "fadeOut 0.2s ease forwards";
+            setTimeout(() => {
+              if (modal.parentNode) {
+                document.body.removeChild(modal);
+              }
+            }, 200);
+          });
+          
+          const fecharComEsc = (e) => {
+            if (e.key === "Escape") {
+              modal.style.animation = "fadeOut 0.2s ease forwards";
+              setTimeout(() => {
+                if (modal.parentNode) {
+                  document.body.removeChild(modal);
+                }
+                document.removeEventListener("keydown", fecharComEsc);
+              }, 200);
+            }
+          };
+          
+          document.addEventListener("keydown", fecharComEsc);
+          return;
+        }
+      }
+      
+      // Se não tem foto, abre edição
+      openEditProfileModal();
+    });
+  }
 }
 
 
@@ -4669,22 +4823,90 @@ function updateMobileProfileUI() {
   // Atualizar avatar no menu mobile
   if (mobileAvatar) {
     const url = currentProfile.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
+    
+    // Limpar event listeners antigos
+    const oldAvatar = mobileAvatar;
+    const newAvatar = oldAvatar.cloneNode(true);
+    oldAvatar.parentNode.replaceChild(newAvatar, oldAvatar);
+    
+    // Configurar o avatar
     if (url) {
-      mobileAvatar.style.backgroundImage = `url('${url}')`;
-      mobileAvatar.style.backgroundSize = "cover";
-      mobileAvatar.style.backgroundPosition = "center";
-      mobileAvatar.textContent = "";
+      newAvatar.style.backgroundImage = `url('${url}')`;
+      newAvatar.style.backgroundSize = "cover";
+      newAvatar.style.backgroundPosition = "center";
+      newAvatar.textContent = "";
     } else {
-      mobileAvatar.style.backgroundImage = "";
-      mobileAvatar.style.background = "var(--accent-gradient)";
-      mobileAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
-      mobileAvatar.style.display = "flex";
-      mobileAvatar.style.alignItems = "center";
-      mobileAvatar.style.justifyContent = "center";
-      mobileAvatar.style.color = "white";
-      mobileAvatar.style.fontWeight = "700";
-      mobileAvatar.style.fontSize = "16px";
+      newAvatar.style.backgroundImage = "";
+      newAvatar.style.background = "var(--accent-gradient)";
+      newAvatar.textContent = mkAvatarInitials(currentProfile.full_name || "Usuário");
+      newAvatar.style.display = "flex";
+      newAvatar.style.alignItems = "center";
+      newAvatar.style.justifyContent = "center";
+      newAvatar.style.color = "white";
+      newAvatar.style.fontWeight = "700";
+      newAvatar.style.fontSize = "16px";
     }
+    
+    newAvatar.style.cursor = "pointer";
+    newAvatar.title = url ? "Clique para ver foto" : "Editar perfil";
+    
+    // Evento de clique SIMPLES no avatar
+    newAvatar.addEventListener("click", function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      if (url) {
+        // SIMPLES: Abrir foto em tela cheia
+        openFullscreenPhoto(url, currentProfile.full_name);
+      } else {
+        // Fecha menu e abre edição
+        closeMobileMenu();
+        setTimeout(() => openEditProfileModal(), 300);
+      }
+    });
+    
+    // Adicionar feedback visual
+    newAvatar.addEventListener("mouseenter", function() {
+      this.style.transform = "scale(1.05)";
+      this.style.boxShadow = "0 0 0 3px rgba(212, 175, 55, 0.3)";
+    });
+    
+    newAvatar.addEventListener("mouseleave", function() {
+      this.style.transform = "scale(1)";
+      this.style.boxShadow = "none";
+    });
+  }
+  
+  // Tornar o texto do perfil clicável para editar
+  const mobileProfileContainer = document.querySelector('.mobile-profile');
+  if (mobileProfileContainer) {
+    const mobileProfileText = mobileProfileContainer.querySelector('.mobile-profile-text');
+    
+    if (mobileProfileText) {
+      mobileProfileText.style.cursor = "pointer";
+      
+      // Clique no texto (nome/cargo) abre edição
+      mobileProfileText.addEventListener("click", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        closeMobileMenu();
+        setTimeout(() => openEditProfileModal(), 300);
+      });
+    }
+    
+    // Clique no container (fora do avatar) também abre edição
+    mobileProfileContainer.addEventListener("click", function(e) {
+      // Se clicou no avatar, já foi tratado
+      if (e.target.closest('.mobile-avatar')) return;
+      
+      // Se clicou no texto, já foi tratado
+      if (e.target.closest('.mobile-profile-text')) return;
+      
+      e.stopPropagation();
+      e.preventDefault();
+      closeMobileMenu();
+      setTimeout(() => openEditProfileModal(), 300);
+    });
   }
   
   // Mostrar atalhos admin se for admin
@@ -4693,6 +4915,124 @@ function updateMobileProfileUI() {
   } else if (mobileAdminShortcuts) {
     mobileAdminShortcuts.style.display = 'none';
   }
+}
+
+// FUNÇÃO SIMPLES PARA ABRIR FOTO EM TELA CHEIA
+function openFullscreenPhoto(photoUrl, userName = "") {
+  // Fechar modal existente se houver
+  const existingModal = document.querySelector('.fullscreen-photo-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const modal = document.createElement("div");
+  modal.className = "fullscreen-photo-modal";
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    padding: 20px;
+  `;
+  
+  const container = document.createElement("div");
+  container.style.cssText = `
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  `;
+  
+  const img = document.createElement("img");
+  img.src = photoUrl;
+  img.style.cssText = `
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    cursor: default;
+    animation: zoomIn 0.3s ease;
+  `;
+  
+  // Nome do usuário (opcional)
+  if (userName) {
+    const nameDiv = document.createElement("div");
+    nameDiv.textContent = userName;
+    nameDiv.style.cssText = `
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+      text-align: center;
+      margin-top: 10px;
+    `;
+    container.appendChild(nameDiv);
+  }
+  
+  // Texto de instrução
+  const instruction = document.createElement("div");
+  instruction.textContent = "Clique para fechar";
+  instruction.style.cssText = `
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin-top: 10px;
+  `;
+  
+  container.appendChild(img);
+  container.appendChild(instruction);
+  modal.appendChild(container);
+  document.body.appendChild(modal);
+  
+  // Fechar ao clicar
+  modal.addEventListener("click", function(e) {
+    if (e.target === modal || e.target === instruction) {
+      modal.style.animation = "fadeOut 0.2s ease forwards";
+      setTimeout(() => modal.remove(), 200);
+    }
+  });
+  
+  // Fechar com ESC
+  const handleEsc = (e) => {
+    if (e.key === "Escape") {
+      modal.style.animation = "fadeOut 0.2s ease forwards";
+      setTimeout(() => {
+        modal.remove();
+        document.removeEventListener("keydown", handleEsc);
+      }, 200);
+    }
+  };
+  
+  document.addEventListener("keydown", handleEsc);
+  
+  // Adicionar animações CSS se não existirem
+  if (!document.getElementById('photo-animations')) {
+    const style = document.createElement('style');
+    style.id = 'photo-animations';
+    style.textContent = `
+      @keyframes zoomIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  return modal;
 }
 
 // Tornar o perfil mobile clicável
