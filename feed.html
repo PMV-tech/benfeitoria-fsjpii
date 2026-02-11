@@ -137,7 +137,13 @@
 
         <section class="view" id="view-notices" data-view="notices">
           <div class="view-header">
-            <h3>Avisos</h3>
+            <div class="view-header-left">
+              <h3 id="noticesHeaderTitle">Avisos</h3>
+              <div id="noticesModeToggle" class="segmented" role="tablist" aria-label="Avisos e aniversariantes">
+                <button type="button" class="seg-btn active" data-mode="notices" role="tab" aria-selected="true">Avisos</button>
+                <button type="button" class="seg-btn" data-mode="birthdays" role="tab" aria-selected="false">Aniversariantes</button>
+              </div>
+            </div>
             <button id="btnNewPinnedCenter" type="button" class="view-action">📌 Novo aviso fixado</button>
           </div>
           <div id="noticesList" class="view-list"></div>
@@ -419,5 +425,3 @@
 
 </body>
 </html>
-
-
