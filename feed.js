@@ -169,6 +169,8 @@ const btnMarkRead = document.getElementById("btnMarkRead");
 const noticesList = document.getElementById("noticesList");
 const noticesEmpty = document.getElementById("noticesEmpty");
 const btnNewPinnedCenter = document.getElementById("btnNewPinnedCenter");
+const noticesHeaderTitle = document.getElementById("noticesHeaderTitle");
+const noticesModeToggle = document.getElementById("noticesModeToggle");
 
 const eventsList = document.getElementById("eventsList");
 const eventsEmpty = document.getElementById("eventsEmpty");
@@ -211,6 +213,17 @@ let editingCommentId = null;
 // Feature flags (tabelas/colunas opcionais)
 let hasPinnedColumn = true;
 
+// Suporte a aniversariantes (colunas opcionais em profiles)
+let hasBirthDateColumn = true;
+let hasPhoneColumn = true;
+let hasAllowBirthdayPublicColumn = true;
+let hasAllowWhatsBirthdayColumn = true;
+
+// Modo da aba "Avisos" (avisos x aniversariantes)
+let noticesMode = (function(){
+  try { return localStorage.getItem("notices_mode") || "notices"; } catch (_) { return "notices"; }
+})();
+
 // Map de perfis (para nome de autor)
 let profilesMap = {}; // id -> full_name
 
@@ -239,6 +252,32 @@ function getAvatarPublicUrl(path) {
   } catch (_) {
     return "";
   }
+
+
+
+function normalizePhoneToE164(input) {
+  // Aceita: +55 11 99999-9999, 5511999999999, 11999999999, etc.
+  if (!input) return null;
+  const digits = String(input).replace(/\D+/g, "");
+  if (!digits) return null;
+
+  // Se já veio com DDI (ex.: 55...), mantém; se veio só com DDD+fone (10/11 dígitos), assume BR
+  let d = digits;
+  if (d.startsWith("0")) d = d.replace(/^0+/, "");
+
+  if (d.length === 10 || d.length === 11) {
+    d = "55" + d;
+  }
+
+  // Protege contra números muito curtos
+  if (d.length < 12) return null;
+
+  return "+" + d;
+}
+
+function waDigitsFromE164(e164) {
+  return String(e164 || "").replace(/\D+/g, "");
+}
 }
 
 function setMiniProfileUI() {
@@ -288,6 +327,27 @@ function ensureProfileModalStyles() {
     .profile-modal .pm-btn.primary{background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;border:none;}
   `;
   document.head.appendChild(st);
+
+
+function ensureBirthdayStyles() {
+  if (document.getElementById("birthday-ui-styles")) return;
+  const st = document.createElement("style");
+  st.id = "birthday-ui-styles";
+  st.textContent = `
+    .view-header-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .segmented{display:inline-flex;gap:6px;padding:6px;border:1px solid var(--border-color);border-radius:999px;background:rgba(255,255,255,0.04);}
+    .segmented .seg-btn{padding:8px 12px;border-radius:999px;border:none;cursor:pointer;font-weight:900;font-size:12px;background:transparent;color:var(--text-secondary);}
+    .segmented .seg-btn.active{background:rgba(255,255,255,0.10);color:var(--text-primary);border:1px solid rgba(255,255,255,0.10);}
+    .view-section-title{margin:10px 0 6px 0;font-weight:900;color:var(--text-primary);font-size:13px;opacity:.95;}
+    .birthday-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .bday-pill{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .bday-date{font-weight:900;color:var(--text-secondary);font-size:12px;border:1px solid var(--border-color);padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.04);}
+    .bday-wa{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;font-weight:900;font-size:12px;border:1px solid var(--border-color);background:rgba(37,211,102,0.12);color:var(--text-primary);text-decoration:none;}
+    .bday-wa:hover{filter:brightness(1.05);}
+    .vi-avatar.has-img{background-size:cover;background-position:center;color:transparent;}
+  `;
+  document.head.appendChild(st);
+}
 }
 
 function ensureEditProfileModal() {
@@ -341,6 +401,77 @@ function ensureEditProfileModal() {
   bioInput.placeholder = "Uma frase sobre você…";
   bioInput.rows = 3;
   bioInput.className = "pm-textarea";
+
+  // Aniversário / WhatsApp (opcional)
+  const birthLabel = document.createElement("div");
+  birthLabel.textContent = "Data de nascimento";
+  birthLabel.className = "pm-label";
+
+  const birthInput = document.createElement("input");
+  birthInput.type = "date";
+  birthInput.id = "editProfileBirth";
+  birthInput.className = "pm-input";
+
+  const phoneLabel = document.createElement("div");
+  phoneLabel.textContent = "Telefone (WhatsApp)";
+  phoneLabel.className = "pm-label";
+
+  const phoneInput = document.createElement("input");
+  phoneInput.type = "tel";
+  phoneInput.id = "editProfilePhone";
+  phoneInput.placeholder = "Ex.: +55 11 99999-9999";
+  phoneInput.className = "pm-input";
+
+  const checksRow = document.createElement("div");
+  checksRow.className = "pm-row";
+  checksRow.style.alignItems = "center";
+  checksRow.style.flexWrap = "wrap";
+
+  const chkPublic = document.createElement("input");
+  chkPublic.type = "checkbox";
+  chkPublic.id = "editProfileBdayPublic";
+  chkPublic.style.width = "16px";
+  chkPublic.style.height = "16px";
+
+  const chkPublicLbl = document.createElement("label");
+  chkPublicLbl.setAttribute("for", "editProfileBdayPublic");
+  chkPublicLbl.textContent = "Aparecer na lista de aniversariantes";
+  chkPublicLbl.style.cursor = "pointer";
+  chkPublicLbl.style.fontWeight = "800";
+  chkPublicLbl.style.color = "var(--text-secondary)";
+  chkPublicLbl.style.fontSize = "13px";
+
+  const chkWhats = document.createElement("input");
+  chkWhats.type = "checkbox";
+  chkWhats.id = "editProfileBdayWhats";
+  chkWhats.style.width = "16px";
+  chkWhats.style.height = "16px";
+
+  const chkWaLbl = document.createElement("label");
+  chkWaLbl.setAttribute("for", "editProfileBdayWhats");
+  chkWaLbl.textContent = "Mostrar botão de WhatsApp no meu aniversário";
+  chkWaLbl.style.cursor = "pointer";
+  chkWaLbl.style.fontWeight = "800";
+  chkWaLbl.style.color = "var(--text-secondary)";
+  chkWaLbl.style.fontSize = "13px";
+
+  // Agrupa checkboxes
+  const c1 = document.createElement("div");
+  c1.style.display = "inline-flex";
+  c1.style.alignItems = "center";
+  c1.style.gap = "8px";
+  c1.appendChild(chkPublic);
+  c1.appendChild(chkPublicLbl);
+
+  const c2 = document.createElement("div");
+  c2.style.display = "inline-flex";
+  c2.style.alignItems = "center";
+  c2.style.gap = "8px";
+  c2.appendChild(chkWhats);
+  c2.appendChild(chkWaLbl);
+
+  checksRow.appendChild(c1);
+  checksRow.appendChild(c2);
 
   const photoLabel = document.createElement("div");
   photoLabel.textContent = "Foto";
@@ -423,7 +554,27 @@ function ensureEditProfileModal() {
 
       const { error } = await supa
         .from("profiles")
-        .update({ full_name: full_name || currentProfile.full_name, bio, avatar_url })
+        .update((() => {
+        const updateObj = { full_name: full_name || currentProfile.full_name, bio, avatar_url };
+
+        // Campos opcionais: aniversariantes / WhatsApp
+        if (hasBirthDateColumn) {
+          const v = (birthInput?.value || "").trim();
+          updateObj.birth_date = v ? v : null;
+        }
+        if (hasPhoneColumn) {
+          const raw = (phoneInput?.value || "").trim();
+          updateObj.phone_e164 = normalizePhoneToE164(raw);
+        }
+        if (hasAllowBirthdayPublicColumn) {
+          updateObj.allow_birthday_public = !!chkPublic?.checked;
+        }
+        if (hasAllowWhatsBirthdayColumn) {
+          updateObj.allow_whatsapp_birthday = !!chkWhats?.checked;
+        }
+
+        return updateObj;
+      })())
         .eq("id", currentUser.id);
 
       if (error) {
@@ -442,6 +593,10 @@ function ensureEditProfileModal() {
       currentProfile.full_name = full_name || currentProfile.full_name;
       currentProfile.bio = bio;
       currentProfile.avatar_url = avatar_url;
+      if (hasBirthDateColumn) currentProfile.birth_date = (birthInput?.value || '').trim() || null;
+      if (hasPhoneColumn) currentProfile.phone_e164 = normalizePhoneToE164((phoneInput?.value || '').trim());
+      if (hasAllowBirthdayPublicColumn) currentProfile.allow_birthday_public = !!chkPublic?.checked;
+      if (hasAllowWhatsBirthdayColumn) currentProfile.allow_whatsapp_birthday = !!chkWhats?.checked;
 
       setMiniProfileUI();
 
@@ -475,6 +630,20 @@ function ensureEditProfileModal() {
   form.appendChild(nameInput);
   form.appendChild(bioLabel);
   form.appendChild(bioInput);
+
+  // campos de aniversariantes (se existirem no banco)
+  if (hasBirthDateColumn) {
+    form.appendChild(birthLabel);
+    form.appendChild(birthInput);
+  }
+  if (hasPhoneColumn) {
+    form.appendChild(phoneLabel);
+    form.appendChild(phoneInput);
+  }
+  if (hasAllowBirthdayPublicColumn || hasAllowWhatsBirthdayColumn) {
+    form.appendChild(checksRow);
+  }
+
   form.appendChild(photoLabel);
   form.appendChild(row);
   form.appendChild(actions);
@@ -492,6 +661,10 @@ function ensureEditProfileModal() {
   editProfileModalEl._fill = () => {
     nameInput.value = currentProfile?.full_name || "";
     bioInput.value = currentProfile?.bio || "";
+    if (hasBirthDateColumn) birthInput.value = currentProfile?.birth_date || "";
+    if (hasPhoneColumn) phoneInput.value = currentProfile?.phone_e164 || "";
+    if (hasAllowBirthdayPublicColumn) chkPublic.checked = currentProfile?.allow_birthday_public !== false; // default true
+    if (hasAllowWhatsBirthdayColumn) chkWhats.checked = !!currentProfile?.allow_whatsapp_birthday;
     pendingAvatarFile = null;
     file.value = "";
     const url = currentProfile?.avatar_url ? getAvatarPublicUrl(currentProfile.avatar_url) : "";
@@ -1336,6 +1509,24 @@ async function detectPinnedSupport() {
   }
 }
 
+async function columnExistsInProfiles(colName) {
+  try {
+    const { error } = await supa.from("profiles").select(`id, ${colName}`).limit(1);
+    if (error) throw error;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function detectBirthdayProfileSupport() {
+  // Detecta se as colunas existem em profiles (para não quebrar em bases antigas)
+  hasBirthDateColumn = await columnExistsInProfiles("birth_date");
+  hasPhoneColumn = await columnExistsInProfiles("phone_e164");
+  hasAllowBirthdayPublicColumn = await columnExistsInProfiles("allow_birthday_public");
+  hasAllowWhatsBirthdayColumn = await columnExistsInProfiles("allow_whatsapp_birthday");
+}
+
 async function loadPinnedSidebar() {
   if (!pinnedList || !pinnedEmpty) return;
 
@@ -1505,6 +1696,37 @@ function setActiveView(viewName) {
   });
 }
 
+
+function applyNoticesModeUI() {
+  ensureBirthdayStyles();
+  // atualiza botões
+  const buttons = Array.from(noticesModeToggle?.querySelectorAll("button[data-mode]") || []);
+  buttons.forEach((b) => {
+    const m = b.getAttribute("data-mode");
+    const active = m === noticesMode;
+    if (active) b.classList.add("active"); else b.classList.remove("active");
+    b.setAttribute("aria-selected", active ? "true" : "false");
+  });
+
+  if (noticesHeaderTitle) {
+    noticesHeaderTitle.textContent = noticesMode === "birthdays" ? "Aniversariantes" : "Avisos";
+  }
+
+  // Botão de novo aviso só faz sentido no modo avisos
+  if (btnNewPinnedCenter) {
+    const isAdmin = currentProfile?.role === "admin";
+    btnNewPinnedCenter.style.display = (noticesMode === "notices" && isAdmin) ? "" : "none";
+  }
+}
+
+function setNoticesMode(mode) {
+  noticesMode = (mode === "birthdays") ? "birthdays" : "notices";
+  try { localStorage.setItem("notices_mode", noticesMode); } catch (_) {}
+  applyNoticesModeUI();
+  // se a view de avisos estiver aberta, recarrega
+  if (viewNotices?.classList.contains("view-active")) loadNoticesView();
+}
+
 function switchView(viewName) {
   if (!VIEWS.includes(viewName)) viewName = "feed";
   setActiveNav(viewName);
@@ -1514,6 +1736,7 @@ function switchView(viewName) {
   if (viewName === "notifications") {
     loadNotificationsView();
   } else if (viewName === "notices") {
+    applyNoticesModeUI();
     loadNoticesView();
   } else if (viewName === "events") {
     loadEventsView();
@@ -1550,9 +1773,13 @@ function setupMenu() {
     loadNotificationsView();
   });
 
-  // Central "Novo aviso fixado" (somente admin)
-  const isAdmin = currentProfile?.role === "admin";
-  if (btnNewPinnedCenter) btnNewPinnedCenter.style.display = isAdmin ? "" : "none";
+  // Avisos x Aniversariantes
+  applyNoticesModeUI();
+  Array.from(noticesModeToggle?.querySelectorAll("button[data-mode]") || []).forEach((b) => {
+    b.addEventListener("click", () => setNoticesMode(b.getAttribute("data-mode")));
+  });
+
+  // Central "Novo aviso fixado" (somente admin e no modo avisos)
   btnNewPinnedCenter?.addEventListener("click", () => btnNewPinned?.click());
 
   // Eventos
@@ -1590,12 +1817,12 @@ async function fetchNotifications(limit = 50) {
   const seen = new Set();
 
   const myPostIds = await fetchMyPostIds();
-  if (!myPostIds.length) return [];
 
 
   const cutoffIso = new Date(Date.now() - NOTIF_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  // Likes em posts meus
+  if (myPostIds.length) {
+    // Likes em posts meus
   try {
     const { data } = await supa
       .from("likes")
@@ -1645,6 +1872,7 @@ async function fetchNotifications(limit = 50) {
       });
     });
   } catch (_) {}
+  }
 
   // Respostas aos meus comentários (quando eu comento em qualquer post)
   try {
@@ -1707,6 +1935,17 @@ async function fetchNotifications(limit = 50) {
     }
   } catch (_) {}
 
+    // Aniversários (notificação de sistema, some automaticamente no dia seguinte)
+  try {
+    const bdays = await fetchBirthdayNotifications();
+    bdays.forEach((b) => {
+      const key = b.id;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push(b);
+    });
+  } catch (_) {}
+
   // Ordena por data
   items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -1720,6 +1959,7 @@ async function fetchNotifications(limit = 50) {
 
 function notifMessage(n) {
   const actor = n.actor || "Alguém";
+  if (n.type === "birthday") return n.is_self ? "🎉 Hoje é seu aniversário!" : `🎂 Hoje é aniversário de ${actor}`;
   if (n.type === "like") return `${actor} curtiu seu post`;
   if (n.type === "comment") return `${actor} comentou no seu post`;
   if (n.type === "reply") return `${actor} respondeu seu comentário`;
@@ -1741,7 +1981,14 @@ function renderNotifItem(n, unread) {
 
   const avatar = document.createElement("div");
   avatar.className = "vi-avatar";
-  avatar.textContent = mkAvatarInitials(n.actor);
+  const av = n.avatar_url ? getAvatarPublicUrl(n.avatar_url) : "";
+  if (av) {
+    avatar.classList.add("has-img");
+    avatar.style.backgroundImage = `url('${av}')`;
+    avatar.textContent = "";
+  } else {
+    avatar.textContent = mkAvatarInitials(n.actor);
+  }
 
   const main = document.createElement("div");
   main.className = "vi-main";
@@ -1753,7 +2000,9 @@ function renderNotifItem(n, unread) {
   const sub = document.createElement("div");
   sub.className = "vi-sub";
   const sn = notifSnippet(n);
-  sub.textContent = sn || (n.type === "comment_like" ? "Toque para ver detalhes" : "Toque para abrir o post");
+  sub.textContent = (n.type === "birthday")
+    ? "Toque para ver os aniversariantes de hoje."
+    : (sn || (n.type === "comment_like" ? "Toque para ver detalhes" : "Toque para abrir o post"));
 
   const meta = document.createElement("div");
   meta.className = "vi-meta";
@@ -1767,6 +2016,11 @@ function renderNotifItem(n, unread) {
   item.appendChild(main);
 
   item.addEventListener("click", async () => {
+    if (n.type === "birthday") {
+      setNoticesMode("birthdays");
+      switchView("notices");
+      return;
+    }
     // garante feed carregado
     if (n.post_id) {
       // se post não existe no DOM (por limitação de 50), recarrega
@@ -1818,8 +2072,251 @@ async function loadNotificationsView() {
   });
 }
 
+
+// ----------------- Aniversariantes -----------------
+let birthdaysCache = { ts: 0, data: [] };
+
+function parseDateOnlyLocal(yyyy_mm_dd) {
+  if (!yyyy_mm_dd) return null;
+  const parts = String(yyyy_mm_dd).split("-");
+  if (parts.length !== 3) return null;
+  const y = Number(parts[0]);
+  const m = Number(parts[1]);
+  const d = Number(parts[2]);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function monthNamePT(monthIndex0) {
+  try {
+    const d = new Date(2000, monthIndex0, 1);
+    return d.toLocaleString("pt-BR", { month: "long" });
+  } catch {
+    return "";
+  }
+}
+
+async function fetchBirthdaysBase(limit = 800) {
+  if (!hasBirthDateColumn) return [];
+  const now = Date.now();
+  if (birthdaysCache.data.length && now - birthdaysCache.ts < 60_000) return birthdaysCache.data; // 1 min
+
+  try {
+    const cols = ["id", "full_name", "avatar_url", "birth_date"];
+    if (hasPhoneColumn) cols.push("phone_e164");
+    if (hasAllowBirthdayPublicColumn) cols.push("allow_birthday_public");
+    if (hasAllowWhatsBirthdayColumn) cols.push("allow_whatsapp_birthday");
+
+    let q = supa
+      .from("profiles")
+      .select(cols.join(","))
+      .not("birth_date", "is", null)
+      .order("full_name", { ascending: true })
+      .limit(limit);
+
+    if (hasAllowBirthdayPublicColumn) {
+      q = q.eq("allow_birthday_public", true);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const list = Array.isArray(data) ? data : [];
+    birthdaysCache = { ts: now, data: list };
+    return list;
+  } catch (e) {
+    console.warn("fetchBirthdaysBase falhou:", e?.message || e);
+    return [];
+  }
+}
+
+function renderSectionTitle(txt) {
+  const t = document.createElement("div");
+  t.className = "view-section-title";
+  t.textContent = txt;
+  return t;
+}
+
+function renderBirthdayItem(p, dayLabel) {
+  const item = document.createElement("div");
+  item.className = "view-item";
+
+  const avatar = document.createElement("div");
+  avatar.className = "vi-avatar";
+  const nm = p.full_name || "Usuário";
+  const avUrl = p.avatar_url ? getAvatarPublicUrl(p.avatar_url) : "";
+  if (avUrl) {
+    avatar.classList.add("has-img");
+    avatar.style.backgroundImage = `url('${avUrl}')`;
+    avatar.textContent = "";
+  } else {
+    avatar.textContent = mkAvatarInitials(nm);
+  }
+
+  const main = document.createElement("div");
+  main.className = "vi-main";
+
+  const row = document.createElement("div");
+  row.className = "birthday-row";
+
+  const title = document.createElement("div");
+  title.className = "vi-title";
+  title.textContent = nm;
+
+  const pills = document.createElement("div");
+  pills.className = "bday-pill";
+
+  if (dayLabel) {
+    const dateP = document.createElement("div");
+    dateP.className = "bday-date";
+    dateP.textContent = dayLabel;
+    pills.appendChild(dateP);
+  }
+
+  // Botão WhatsApp (manual) — somente se a pessoa colocou telefone e permitiu
+  const canWa = hasPhoneColumn && !!p.phone_e164 && (!hasAllowWhatsBirthdayColumn || !!p.allow_whatsapp_birthday);
+  if (canWa) {
+    const digits = waDigitsFromE164(p.phone_e164);
+    const msg = encodeURIComponent(`🎉 Parabéns, ${nm}! Que Deus te abençoe muito! — Benfeitoria FSJPII`);
+    const a = document.createElement("a");
+    a.className = "bday-wa";
+    a.href = `https://wa.me/${digits}?text=${msg}`;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.innerHTML = `<i class="fab fa-whatsapp"></i> WhatsApp`;
+    pills.appendChild(a);
+  }
+
+  row.appendChild(title);
+  row.appendChild(pills);
+
+  const sub = document.createElement("div");
+  sub.className = "vi-sub";
+  sub.textContent = canWa ? "Toque no botão para enviar a mensagem." : "Sem WhatsApp (ou a pessoa não autorizou).";
+
+  main.appendChild(row);
+  main.appendChild(sub);
+
+  item.appendChild(avatar);
+  item.appendChild(main);
+
+  return item;
+}
+
+async function loadBirthdaysView() {
+  if (!noticesList || !noticesEmpty) return;
+
+  noticesList.innerHTML = "";
+  noticesEmpty.style.display = "none";
+
+  ensureBirthdayStyles();
+
+  if (!hasBirthDateColumn) {
+    noticesEmpty.textContent = "Para usar aniversariantes, adicione as colunas em 'profiles' (birth_date / phone_e164).";
+    noticesEmpty.style.display = "";
+    return;
+  }
+
+  const base = await fetchBirthdaysBase();
+  if (!base.length) {
+    noticesEmpty.textContent = "Nenhum aniversariante cadastrado ainda.";
+    noticesEmpty.style.display = "";
+    return;
+  }
+
+  const now = new Date();
+  const mNow = now.getMonth();
+  const dNow = now.getDate();
+
+  const monthList = [];
+  const todayList = [];
+
+  base.forEach((p) => {
+    const bd = parseDateOnlyLocal(p.birth_date);
+    if (!bd) return;
+    if (bd.getMonth() !== mNow) return;
+    const isToday = bd.getDate() === dNow;
+    (isToday ? todayList : monthList).push(p);
+  });
+
+  // Ordenações
+  todayList.sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
+  monthList.sort((a, b) => {
+    const da = parseDateOnlyLocal(a.birth_date)?.getDate() || 0;
+    const db = parseDateOnlyLocal(b.birth_date)?.getDate() || 0;
+    if (da !== db) return da - db;
+    return (a.full_name || "").localeCompare(b.full_name || "");
+  });
+
+  // Hoje
+  noticesList.appendChild(renderSectionTitle("🎂 Hoje"));
+  if (!todayList.length) {
+    const empty = document.createElement("div");
+    empty.className = "side-empty";
+    empty.textContent = "Sem aniversariantes hoje.";
+    noticesList.appendChild(empty);
+  } else {
+    todayList.forEach((p) => {
+      noticesList.appendChild(renderBirthdayItem(p, "Hoje"));
+    });
+  }
+
+  // Mês
+  const mes = monthNamePT(mNow);
+  noticesList.appendChild(renderSectionTitle(`📅 Aniversariantes de ${mes.charAt(0).toUpperCase() + mes.slice(1)}`));
+  if (!monthList.length) {
+    const empty2 = document.createElement("div");
+    empty2.className = "side-empty";
+    empty2.textContent = "Nenhum outro aniversariante este mês.";
+    noticesList.appendChild(empty2);
+  } else {
+    monthList.forEach((p) => {
+      const bd = parseDateOnlyLocal(p.birth_date);
+      const dayLabel = bd ? `Dia ${String(bd.getDate()).padStart(2, "0")}` : "";
+      noticesList.appendChild(renderBirthdayItem(p, dayLabel));
+    });
+  }
+}
+
+async function fetchBirthdayNotifications() {
+  // Notificações dinâmicas: só aparecem no dia do aniversário e somem automaticamente depois
+  if (!currentUser || !hasBirthDateColumn) return [];
+  const base = await fetchBirthdaysBase();
+  const now = new Date();
+  const mNow = now.getMonth();
+  const dNow = now.getDate();
+
+  const todayPeople = base.filter((p) => {
+    const bd = parseDateOnlyLocal(p.birth_date);
+    return bd && bd.getMonth() === mNow && bd.getDate() === dNow;
+  });
+
+  if (!todayPeople.length) return [];
+
+  // timestamp "hoje 09:00" para ordenar bem
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0).toISOString();
+
+  return todayPeople.map((p) => ({
+    type: "birthday",
+    id: `birthday:${p.id}:${t.slice(0, 10)}`,
+    created_at: t,
+    actor_id: p.id,
+    actor: p.full_name || "Usuário",
+    avatar_url: p.avatar_url || null,
+    is_self: p.id === currentUser.id,
+    post_id: null,
+  }));
+}
+
 // ----------------- Avisos (view) -----------------
 async function loadNoticesView() {
+  ensureBirthdayStyles();
+  applyNoticesModeUI();
+  if (noticesMode === "birthdays") {
+    await loadBirthdaysView();
+    return;
+  }
+
   if (!noticesList || !noticesEmpty) return;
 
   noticesList.innerHTML = "";
@@ -2856,7 +3353,7 @@ async function init() {
   try {
     let res = await supa
       .from("profiles")
-      .select("id, role, full_name, bio, avatar_url")
+      .select("id, role, full_name, bio, avatar_url, birth_date, phone_e164, allow_birthday_public, allow_whatsapp_birthday")
       .eq("id", currentUser.id)
       .single();
 
@@ -2894,6 +3391,7 @@ async function init() {
   }
 
   await detectPinnedSupport();
+  await detectBirthdayProfileSupport();
 
   applyThemeToDynamicElements();
   await carregarFeed();
@@ -5477,6 +5975,3 @@ async function loadFullProfiles(userIds) {
     return {};
   }
 }
-// Adicione esta função para disparar evento quando o perfil for atualizado
-// Procure no código onde currentProfile é atualizado e adicione:
-// document.dispatchEvent(new CustomEvent('profileUpdated'));
