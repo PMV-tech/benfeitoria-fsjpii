@@ -252,8 +252,7 @@ function getAvatarPublicUrl(path) {
   } catch (_) {
     return "";
   }
-
-
+}
 
 function normalizePhoneToE164(input) {
   // Aceita: +55 11 99999-9999, 5511999999999, 11999999999, etc.
@@ -262,9 +261,7 @@ function normalizePhoneToE164(input) {
   if (!digits) return null;
 
   // Se já veio com DDI (ex.: 55...), mantém; se veio só com DDD+fone (10/11 dígitos), assume BR
-  let d = digits;
-  if (d.startsWith("0")) d = d.replace(/^0+/, "");
-
+  let d = digits.replace(/^0+/, "");
   if (d.length === 10 || d.length === 11) {
     d = "55" + d;
   }
@@ -276,8 +273,8 @@ function normalizePhoneToE164(input) {
 }
 
 function waDigitsFromE164(e164) {
+  // Para usar em https://wa.me/<digits>
   return String(e164 || "").replace(/\D+/g, "");
-}
 }
 
 function setMiniProfileUI() {
@@ -327,7 +324,7 @@ function ensureProfileModalStyles() {
     .profile-modal .pm-btn.primary{background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;border:none;}
   `;
   document.head.appendChild(st);
-
+}
 
 function ensureBirthdayStyles() {
   if (document.getElementById("birthday-ui-styles")) return;
@@ -347,7 +344,6 @@ function ensureBirthdayStyles() {
     .vi-avatar.has-img{background-size:cover;background-position:center;color:transparent;}
   `;
   document.head.appendChild(st);
-}
 }
 
 function ensureEditProfileModal() {
