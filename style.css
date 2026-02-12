@@ -712,10 +712,13 @@ body {
   body {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start; /* Mude de 'center' para 'flex-start' */
     align-items: center;
-    padding: 20px;
-    overflow: auto; /* Permitir scroll apenas se necessário no mobile */
+    padding: 20px 16px;
+    overflow-y: auto; /* PERMITE SCROLL */
+    overflow-x: hidden;
+    height: auto; /* Altura automática */
+    min-height: 100vh; /* Mínimo de 100% da viewport */
   }
 
   .login-container {
@@ -723,8 +726,9 @@ body {
     max-width: 500px;
     height: auto;
     flex-direction: column;
-    margin-top: 40px; /* MAIS ESPAÇO NO TOPO NO MOBILE */
-    overflow: hidden;
+    margin-top: 60px; /* AUMENTE O ESPAÇO DO TOPO */
+    margin-bottom: 30px; /* ESPAÇO ANTES DO FOOTER */
+    overflow: visible; /* Permite que o conteúdo seja rolado */
   }
 
   .login-left,
@@ -778,12 +782,15 @@ body {
 }
 
 @media (max-width: 768px) {
-  body {
-    padding: 20px; /* MAIS ESPAÇO NAS BORDAS */
+    body {
+    padding: 16px;
+    justify-content: flex-start;
+    overflow-y: auto;
   }
 
   .login-container {
-    margin-top: 30px; /* ESPAÇO CONSISTENTE */
+    margin-top: 50px; /* ESPAÇO DO TOPO */
+    margin-bottom: 25px;
   }
 
   .login-left {
@@ -859,13 +866,15 @@ body {
 /* TELAS MUITO PEQUENAS */
 @media (max-width: 480px) {
   body {
-    padding: 16px;
+    padding: 12px;
+    justify-content: flex-start;
   }
 
   .login-container {
-    border-radius: 16px;
-    margin-top: 25px; /* ESPAÇO ADEQUADO PARA TELAS PEQUENAS */
+    margin-top: 45px; /* ESPAÇO DO TOPO */
+    margin-bottom: 20px;
   }
+  
 
   .login-left {
     padding: 30px 22px; /* ESPAÇO INTERNO ADEQUADO */
