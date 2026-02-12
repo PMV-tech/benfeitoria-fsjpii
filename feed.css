@@ -25,16 +25,16 @@
 
 [data-theme="light"] {
   /* Tema Claro */
-  --bg-primary: #1d2a82;
-  --bg-secondary: #751e1e;
-  --bg-card: linear-gradient(145deg, #eaecfa, #fff4f4);
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --bg-card: linear-gradient(145deg, #ffffff, #ffffff);
   --text-primary: #222222;
   --text-secondary: #444444;
   --text-muted: rgba(0, 0, 0, 0.6);
   --border-color: rgba(0, 0, 0, 0.1);
   --border-light: rgba(0, 0, 0, 0.08);
   --shadow-color: rgba(0, 0, 0, 0.1);
-  --accent-gradient: linear-gradient(135deg, #b3adf8, rgb(114, 9, 9));
+  --accent-gradient: linear-gradient(135deg, #0e0297, rgb(135, 0, 0));
   --button-bg: rgba(0, 0, 0, 0.05);
   --button-hover: rgba(0, 0, 0, 0.1);
   --input-bg: rgba(0, 0, 0, 0.05);
@@ -43,6 +43,7 @@
   --success-color: rgba(50, 180, 90, 0.9);
   --danger-color: rgba(255, 60, 100, 0.9);
   --info-color: rgba(80, 130, 240, 0.9);
+  --bg-white: #000000;
 }
 
 * {
@@ -97,7 +98,7 @@ body {
       rgba(212, 175, 55, 0.06) 20%,
       transparent 80%
     ),
-    linear-gradient(135deg, #f8f1f1 0%, #f5f8fc 100%);
+    linear-gradient(145deg, hsl(0, 0%, 100%),hsl(0, 0%, 100%), hsl(0, 0%, 100%));
   background-attachment: fixed;
 }
 
@@ -165,13 +166,8 @@ body {
     rgba(230, 60, 120, 0.95),
     rgba(200, 40, 100, 0.85),
     rgba(170, 20, 80, 0.75),
-    transparent 60%
+    transparent 80%
   );
-  box-shadow:
-    0 0 30px rgba(230, 60, 120, 0.8),
-    0 0 60px rgba(200, 40, 100, 0.5),
-    0 0 100px rgba(170, 20, 80, 0.3),
-    inset 0 0 20px rgba(255, 140, 180, 0.6);
 }
 
 [data-theme="light"] .particle-blue {
@@ -179,26 +175,16 @@ body {
     rgba(80, 150, 255, 0.95),
     rgba(60, 130, 235, 0.85),
     rgba(40, 110, 215, 0.75),
-    transparent 60%
+    transparent 80%
   );
-  box-shadow:
-    0 0 30px rgba(80, 150, 255, 0.8),
-    0 0 60px rgba(60, 130, 235, 0.5),
-    0 0 100px rgba(40, 110, 215, 0.3),
-    inset 0 0 20px rgba(140, 200, 255, 0.6);
 }
 [data-theme="light"] .particle-gold {
-  background: radial-gradient(circle at 30% 30%, 
+  background: radial-gradient(circle at 40% 40%, 
     rgba(255, 210, 90, 0.95),
     rgba(235, 190, 70, 0.85),
     rgba(215, 170, 50, 0.75),
-    transparent 60%
+    transparent 90%
   );
-  box-shadow:
-    0 0 30px rgba(255, 210, 90, 0.8),
-    0 0 60px rgba(235, 190, 70, 0.5),
-    0 0 100px rgba(215, 170, 50, 0.3),
-    inset 0 0 20px rgba(255, 240, 160, 0.6);
 }
 
 /* Aumentar opacidade geral das partículas no tema claro */
