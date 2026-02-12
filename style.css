@@ -906,13 +906,62 @@ body {
   }
 
   .PMV {
-    font-size: 12px;
-    margin-top: 20px;
-  }
+  text-align: center;
+  width: 100%;
+  max-width: 1200px; /* ou o mesmo max-width do layout */
+  margin: 40px auto 60px; /* AUTO nas laterais = CENTRALIZADO */
+  padding: 20px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+  opacity: 0.9;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+}
 }
 
-a{
+.PMV a {
+  color: var(--text-muted);
   text-decoration: none;
-  color: white;
+  font-weight: 500;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 30px;
+  background: var(--button-bg);
+  border: 1px solid var(--border-light);
+}
+
+.PMV a:hover {
+  color: var(--text-primary);
+  background: var(--button-hover);
+  transform: translateY(-2px);
+  border-color: var(--border-color);
+  text-decoration: none;
+}
+
+/* Tema claro */
+[data-theme="light"] .PMV a {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .PMV a:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .PMV {
+    margin: 30px auto 40px;
+    padding: 16px;
+  }
   
+  .PMV a {
+    padding: 6px 16px;
+    font-size: 13px;
+  }
 }
