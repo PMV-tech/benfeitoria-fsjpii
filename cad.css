@@ -190,7 +190,7 @@ body {
   background: radial-gradient(circle at 30% 30%, 
     rgba(180, 0, 45, 0.85),
     rgba(128, 0, 32, 0.7),
-    transparent 65%
+    transparent 80%
   );
   box-shadow: 
     0 0 20px rgba(180, 0, 45, 0.6),
@@ -202,7 +202,7 @@ body {
   background: radial-gradient(circle at 30% 30%, 
     rgba(0, 100, 220, 0.85),
     rgba(0, 71, 171, 0.7),
-    transparent 65%
+    transparent 80%
   );
   box-shadow: 
     0 0 20px rgba(0, 100, 220, 0.6),
@@ -214,7 +214,7 @@ body {
   background: radial-gradient(circle at 30% 30%, 
     rgba(240, 200, 70, 0.85),
     rgba(212, 175, 55, 0.7),
-    transparent 65%
+    transparent 80%
   );
   box-shadow: 
     0 0 20px rgba(240, 200, 70, 0.6),
@@ -228,13 +228,8 @@ body {
     rgba(230, 60, 120, 0.95),
     rgba(200, 40, 100, 0.85),
     rgba(170, 20, 80, 0.75),
-    transparent 60%
+    transparent 80%
   );
-  box-shadow: 
-    0 0 30px rgba(230, 60, 120, 0.8),
-    0 0 60px rgba(200, 40, 100, 0.5),
-    0 0 100px rgba(170, 20, 80, 0.3),
-    inset 0 0 20px rgba(255, 140, 180, 0.6);
 }
 
 [data-theme="light"] .particle-blue {
@@ -242,13 +237,8 @@ body {
     rgba(80, 150, 255, 0.95),
     rgba(60, 130, 235, 0.85),
     rgba(40, 110, 215, 0.75),
-    transparent 60%
+    transparent 80%
   );
-  box-shadow: 
-    0 0 30px rgba(80, 150, 255, 0.8),
-    0 0 60px rgba(60, 130, 235, 0.5),
-    0 0 100px rgba(40, 110, 215, 0.3),
-    inset 0 0 20px rgba(140, 200, 255, 0.6);
 }
 
 [data-theme="light"] .particle-gold {
@@ -256,13 +246,8 @@ body {
     rgba(255, 210, 90, 0.95),
     rgba(235, 190, 70, 0.85),
     rgba(215, 170, 50, 0.75),
-    transparent 60%
+    transparent 80%
   );
-  box-shadow: 
-    0 0 30px rgba(255, 210, 90, 0.8),
-    0 0 60px rgba(235, 190, 70, 0.5),
-    0 0 100px rgba(215, 170, 50, 0.3),
-    inset 0 0 20px rgba(255, 240, 160, 0.6);
 }
 
 /* Aumentar opacidade geral das partículas no tema claro */
@@ -805,5 +790,4 @@ body {
     margin-top: 20px;
   }
 }
-
 
