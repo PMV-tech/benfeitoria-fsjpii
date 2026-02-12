@@ -79,7 +79,7 @@
 
       <!-- Atalhos Admin (somente para admin) -->
       <div class="mobile-menu-section admin-only" id="mobileAdminShortcuts" style="display:none;">
-        <div class="mobile-menu-title">Criar aviso</div>
+        <div class="mobile-menu-title">Atalhos do admin</div>
         <button class="mobile-menu-link" type="button" id="mobileBtnNewPinned">
           <i class="fas fa-thumbtack"></i> Novo aviso fixado
         </button>
@@ -114,7 +114,7 @@
         </div>
 
         <div class="side-card admin-only" id="adminShortcuts" style="display:none;">
-          <div class="side-title">Criar aviso</div>
+          <div class="side-title">Atalhos do admin</div>
           <button class="side-link" type="button" id="btnNewPinned">📌 Novo aviso fixado</button>
           <div class="side-hint">Dica: você também pode fixar qualquer post pelo ícone 📌 no card.</div>
         </div>
@@ -137,13 +137,7 @@
 
         <section class="view" id="view-notices" data-view="notices">
           <div class="view-header">
-            <div class="view-header-left">
-              <h3 id="noticesHeaderTitle">Avisos</h3>
-              <div id="noticesModeToggle" class="segmented" role="tablist" aria-label="Avisos e aniversariantes">
-                <button type="button" class="seg-btn active" data-mode="notices" role="tab" aria-selected="true">Avisos</button>
-                <button type="button" class="seg-btn" data-mode="birthdays" role="tab" aria-selected="false">Aniversariantes</button>
-              </div>
-            </div>
+            <h3>Avisos</h3>
             <button id="btnNewPinnedCenter" type="button" class="view-action">📌 Novo aviso fixado</button>
           </div>
           <div id="noticesList" class="view-list"></div>
@@ -175,6 +169,7 @@
         </div>
       </aside>
     </div>
+    <div class="PMV"><a href="https://pmv-tech.github.io/Website-about-us/">© PMV Tech • Tecnologia e Inovação</a></div>
   </div>
     
   <!-- BOTÃO + -->
@@ -220,6 +215,7 @@
   <!-- FUNDO DINÂMICO -->
   <div id="logoBg"></div>
 
+  
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
@@ -266,7 +262,7 @@
           const particle = document.createElement('div');
           particle.className = `logo-particle ${colorClass}`;
           
-          // Tamanho menor no tema claro
+          // Tamanho no tema claro
           const size = isDark ? (Math.random() * 4 + 3) : (Math.random() * 3 + 2);
           particle.style.width = `${size}px`;
           particle.style.height = `${size}px`;
@@ -275,7 +271,7 @@
           const x = Math.random() * 100;
           const y = Math.random() * 100;
           
-          // Velocidade MUITO LENTA (90% mais lento que o original)
+          // Velocidade MUITO LENTA 
           particles.push({
             element: particle,
             x: x,
@@ -422,6 +418,5 @@
       });
     });
   </script>
-
 </body>
 </html>
