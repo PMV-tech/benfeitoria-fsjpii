@@ -1726,3 +1726,21 @@ main#feed {
     padding-left: 60px;
   }
 }
+
+/* RODAPÉ */
+.PMV {
+  color: var(--text-muted);
+  font-size: 14px;
+  opacity: 0.9;
+  margin-top: 30px; /* MAIS ESPAÇO NO DESKTOP */
+  position: relative;
+  z-index: 1;
+  transition: color 0.3s ease;
+  padding-bottom: 20px; /* ESPAÇO NO FINAL PARA SCROLL */
+}
+
+a{
+  text-decoration: none;
+  color: white;
+  
+}
